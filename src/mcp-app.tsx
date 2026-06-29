@@ -1,10 +1,10 @@
 /**
  * @file Memora flip-card MCP App UI.
  *
- * Review mode: flip a card, grade it (persists a spaced-repetition schedule via
- * grade_card, updates model context); finishing sends a summary so Claude reacts.
- * Browse mode: a scrollable list of all cards; click to jump, delete inline.
- * Cards can be edited/deleted inline; a dropdown switches decks.
+ * Review: flip + grade (persists FSRS via grade_card). Browse: list of cards.
+ * Tree: deck names use "::" as a category tree; tap a category to study its whole
+ * subtree (study tool) or a deck to review it. Each card carries its source deck,
+ * so grade/edit/delete route correctly even in a merged multi-deck session.
  */
 import type { App, McpUiHostContext } from "@modelcontextprotocol/ext-apps";
 import { useApp } from "@modelcontextprotocol/ext-apps/react";
@@ -13,7 +13,7 @@ import { StrictMode, useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import styles from "./mcp-app.module.css";
 
-type Card = { front: string; back: string };
+type Card = { front: string; back: string; deck: string };
 /** true = correct, false = missed, undefined = not graded yet. */
 type Grade = boolean | undefined;
 
@@ -27,7 +27,7 @@ interface DeckData {
 
 const EMPTY: DeckData = { deck: "", cards: [], availableDecks: [], dueCount: 0, newCount: 0 };
 
-/** Pull the deck out of a tool result, with a text fallback. */
+/** Pull the session out of a tool result, with a text fallback. */
 function extractDeck(result: CallToolResult): DeckData {
   const sc = (
     result as {
@@ -52,17 +52,94 @@ function extractDeck(result: CallToolResult): DeckData {
 
   const text =
     (result.content?.find((c) => c.type === "text") as { text?: string } | undefined)?.text ?? "";
+  const deck = text.match(/^Deck:\s*(.+?)\s*\(/m)?.[1] ?? "Deck";
   const cards: Card[] = [];
   for (const line of text.split("\n")) {
     const m = line.match(/^\s*\d+\.\s*(.+?)\s*->\s*(.+?)\s*$/);
-    if (m) cards.push({ front: m[1], back: m[2] });
+    if (m) cards.push({ front: m[1], back: m[2], deck });
   }
-  const deck = text.match(/^Deck:\s*(.+?)\s*\(/m)?.[1] ?? "Deck";
   const availableDecks = (text.match(/^Available decks:\s*(.+)$/m)?.[1] ?? "")
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
   return { deck, cards, availableDecks, dueCount: 0, newCount: 0 };
+}
+
+// --- deck tree -----------------------------------------------------------
+
+type TreeNode = { name: string; path: string; children: TreeNode[]; isDeck: boolean };
+
+/** Build a tree from "::"-separated deck names. */
+function buildTree(names: string[]): TreeNode[] {
+  const roots: TreeNode[] = [];
+  for (const full of names) {
+    const segs = full.split("::").map((s) => s.trim()).filter(Boolean);
+    let level = roots;
+    let prefix = "";
+    segs.forEach((seg, i) => {
+      prefix = prefix ? prefix + "::" + seg : seg;
+      let node = level.find((n) => n.name === seg);
+      if (!node) {
+        node = { name: seg, path: prefix, children: [], isDeck: false };
+        level.push(node);
+      }
+      if (i === segs.length - 1) node.isDeck = true;
+      level = node.children;
+    });
+  }
+  return roots;
+}
+
+function TreeView({
+  nodes,
+  depth,
+  expanded,
+  onToggle,
+  onPick,
+  busy,
+}: {
+  nodes: TreeNode[];
+  depth: number;
+  expanded: Set<string>;
+  onToggle: (path: string) => void;
+  onPick: (node: TreeNode) => void;
+  busy: boolean;
+}) {
+  return (
+    <>
+      {nodes.map((node) => {
+        const hasChildren = node.children.length > 0;
+        const open = expanded.has(node.path);
+        return (
+          <div key={node.path}>
+            <div className={styles.treeRow} style={{ paddingLeft: depth * 16 }}>
+              <button
+                className={styles.treeToggle}
+                onClick={() => hasChildren && onToggle(node.path)}
+                aria-label={hasChildren ? (open ? "Collapse" : "Expand") : undefined}
+                aria-hidden={!hasChildren}
+              >
+                {hasChildren ? (open ? "▾" : "▸") : ""}
+              </button>
+              <button className={styles.treeName} onClick={() => onPick(node)} disabled={busy}>
+                {node.name}
+              </button>
+            </div>
+            {hasChildren && open && (
+              <TreeView
+                nodes={node.children}
+                depth={depth + 1}
+                expanded={expanded}
+                onToggle={onToggle}
+                onPick={onPick}
+                busy={busy}
+              />
+            )}
+          </div>
+        );
+      })}
+    </>
+  );
 }
 
 function MemoraApp() {
@@ -115,10 +192,10 @@ function Deck({
   const [editFront, setEditFront] = useState("");
   const [editBack, setEditBack] = useState("");
   const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const [view, setView] = useState<"review" | "list">("review");
+  const [view, setView] = useState<"review" | "list" | "tree">("review");
   const [confirmRow, setConfirmRow] = useState<number | null>(null);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
-  // Reset whenever a new deck arrives.
   useEffect(() => {
     setCards(meta.cards);
     setIndex(0);
@@ -138,11 +215,12 @@ function Deck({
     paddingLeft: hostContext?.safeAreaInsets?.left,
   };
 
-  const switchDeck = async (name: string) => {
-    if (name === deck || busy) return;
+  const tree = useMemo(() => buildTree(availableDecks), [availableDecks]);
+
+  const callAndShow = async (name: string, args: Record<string, unknown>) => {
     setBusy(true);
     try {
-      const r = await app.callServerTool({ name: "review_deck", arguments: { deck_name: name } });
+      const r = await app.callServerTool({ name, arguments: args });
       setResult(r as CallToolResult);
     } catch (e) {
       console.error(e);
@@ -151,29 +229,65 @@ function Deck({
     }
   };
 
+  const switchDeck = (name: string) => callAndShow("review_deck", { deck_name: name });
+  const onPick = (node: TreeNode) =>
+    node.children.length > 0
+      ? callAndShow("study", { path: node.path })
+      : callAndShow("review_deck", { deck_name: node.path });
+
+  const toggleNode = (p: string) =>
+    setExpanded((s) => {
+      const n = new Set(s);
+      if (n.has(p)) n.delete(p);
+      else n.add(p);
+      return n;
+    });
+
   const deckSwitcher =
     availableDecks.length > 1 ? (
       <div className={styles.deckSwitcher}>
-        <label className={styles.deckSwitcherLabel} htmlFor="deck-select">Deck</label>
         <select
-          id="deck-select"
           className={styles.deckSelect}
-          value={deck}
+          value={availableDecks.includes(deck) ? deck : ""}
           onChange={(e) => switchDeck(e.target.value)}
           disabled={busy}
         >
+          {!availableDecks.includes(deck) && (
+            <option value="" disabled>
+              Studying: {deck}
+            </option>
+          )}
           {availableDecks.map((d) => (
             <option key={d} value={d}>{d}</option>
           ))}
         </select>
+        <button className={styles.treeBtn} onClick={() => setView("tree")} title="Browse the deck tree">
+          Tree
+        </button>
       </div>
     ) : null;
+
+  // --- Tree view ---
+  if (view === "tree") {
+    return (
+      <main className={styles.main} style={pad}>
+        <h3 className={styles.deckTitle}>Decks</h3>
+        <p className={styles.hint}>Tap a category to study its subtree, or a deck to review it.</p>
+        <div className={styles.tree}>
+          <TreeView nodes={tree} depth={0} expanded={expanded} onToggle={toggleNode} onPick={onPick} busy={busy} />
+        </div>
+        <div className={styles.controls}>
+          <button className={styles.accentBtn} onClick={() => setView("review")}>Back to review</button>
+        </div>
+      </main>
+    );
+  }
 
   if (cards.length === 0) {
     return (
       <main className={styles.main} style={pad}>
         <p className={styles.hint}>
-          Waiting for a deck. Ask Claude to call <code>review_deck</code>.
+          Waiting for a deck. Ask Claude to call <code>review_deck</code> or <code>study</code>.
         </p>
         {deckSwitcher}
       </main>
@@ -190,7 +304,7 @@ function Deck({
         return `- [${mark}] ${c.front} -> ${c.back}`;
       })
       .join("\n");
-    return `---\ndeck: ${deck}\ngraded: ${graded}\ntotal: ${cards.length}\ncorrect: ${correct}\n---\n\nFlashcard review (live state):\n${rows}`;
+    return `---\nsession: ${deck}\ngraded: ${graded}\ntotal: ${cards.length}\ncorrect: ${correct}\n---\n\nFlashcard review (live state):\n${rows}`;
   };
 
   const reset = () => {
@@ -208,15 +322,15 @@ function Deck({
     setConfirmingDelete(false);
   };
 
-  /** Remove the card at i locally (stay in place) and persist via delete_card. */
+  /** Remove card i locally (stay in place) and persist via delete_card on its deck. */
   const removeCardAt = (i: number) => {
     if (cards.length <= 1) return;
-    const f = cards[i].front;
+    const c = cards[i];
     setCards((cs) => cs.filter((_, j) => j !== i));
     setGrades((gs) => gs.filter((_, j) => j !== i));
     setIndex((idx) => Math.min(idx, cards.length - 2));
     setFlipped(false);
-    app.callServerTool({ name: "delete_card", arguments: { deck_name: deck, front: f } }).catch(() => {});
+    app.callServerTool({ name: "delete_card", arguments: { deck_name: c.deck, front: c.front } }).catch(() => {});
   };
 
   const grade = (correct: boolean) => {
@@ -229,7 +343,7 @@ function Deck({
     setFlipped(false);
 
     app
-      .callServerTool({ name: "grade_card", arguments: { deck_name: deck, front: card.front, correct } })
+      .callServerTool({ name: "grade_card", arguments: { deck_name: card.deck, front: card.front, correct } })
       .catch(() => {});
     app.updateModelContext({ content: [{ type: "text", text: contextMarkdown(next) }] }).catch(() => {});
 
@@ -239,8 +353,8 @@ function Deck({
       const correctCount = next.filter((g) => g === true).length;
       const missed = cards.filter((_, i) => next[i] === false).map((c) => `"${c.front}" (${c.back})`);
       const summary = missed.length
-        ? `I finished reviewing my "${deck}" deck: ${correctCount} of ${cards.length} correct. I missed: ${missed.join(", ")}. Can you help me drill the ones I missed?`
-        : `I finished reviewing my "${deck}" deck with a perfect score: ${correctCount} of ${cards.length}.`;
+        ? `I finished reviewing "${deck}": ${correctCount} of ${cards.length} correct. I missed: ${missed.join(", ")}. Can you help me drill the ones I missed?`
+        : `I finished reviewing "${deck}" with a perfect score: ${correctCount} of ${cards.length}.`;
       app.sendMessage({ role: "user", content: [{ type: "text", text: summary }] }).catch(() => {});
     } else {
       setIndex((i) => Math.min(cards.length - 1, i + 1));
@@ -261,15 +375,15 @@ function Deck({
     const nf = editFront.trim();
     const nb = editBack.trim();
     if (!nf || !nb) return;
-    const original = cards[index].front;
+    const orig = cards[index];
     const newCards = cards.slice();
-    newCards[index] = { front: nf, back: nb };
+    newCards[index] = { front: nf, back: nb, deck: orig.deck };
     setCards(newCards);
     setEditing(false);
     app
       .callServerTool({
         name: "edit_card",
-        arguments: { deck_name: deck, front: original, new_front: nf, new_back: nb },
+        arguments: { deck_name: orig.deck, front: orig.front, new_front: nf, new_back: nb },
       })
       .catch(() => {});
   };
@@ -309,11 +423,7 @@ function Deck({
                     </button>
                   </span>
                 ) : (
-                  <button
-                    className={styles.rowDeleteIcon}
-                    onClick={() => setConfirmRow(i)}
-                    aria-label="Delete card"
-                  >
+                  <button className={styles.rowDeleteIcon} onClick={() => setConfirmRow(i)} aria-label="Delete card">
                     &times;
                   </button>
                 ))}
@@ -370,11 +480,7 @@ function Deck({
         >
           &#8249;
         </button>
-        <button
-          className={styles.counterButton}
-          onClick={() => setView("list")}
-          title="Browse all cards"
-        >
+        <button className={styles.counterButton} onClick={() => setView("list")} title="Browse all cards">
           Card {index + 1} of {cards.length}
         </button>
         <button

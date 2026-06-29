@@ -1,12 +1,13 @@
 /**
  * Memora MCP server.
  *
- * Decks live in editable data/decks.json, read live (mtime-cached) on every call.
- * - review_deck: show a deck as an interactive flip-card review (due cards first).
- * - create_deck: Claude generates cards from the request/conversation; persist + render.
- * - grade_card: the UI records a spaced-repetition result for one card (SM-2-lite),
- *   persisting due/interval/ease/reps back to decks.json.
- * All review/create results link the same flip-card ui:// view.
+ * Decks live in editable data/decks.json, read live (mtime-cached). Deck names use
+ * "::" to form a category tree (e.g. "LLM::Attention"); the `study` tool reviews a
+ * whole subtree, merging its decks into one session (each card stays attributed to
+ * its source deck so grading/editing routes correctly).
+ *
+ * Tools: review_deck, study, create_deck, grade_card, edit_card, rename_deck,
+ * delete_card, delete_deck, due_today. Spaced repetition is FSRS (ts-fsrs).
  */
 import {
   registerAppResource,
@@ -21,10 +22,9 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fsrs, generatorParameters, createEmptyCard, Rating, type Card as FsrsCard } from "ts-fsrs";
 
-/** A flashcard. The optional fields hold spaced-repetition state (absent = new card). */
 /** Full FSRS card state (ts-fsrs), persisted so reviews can be reconstructed. */
 type FsrsState = {
-  due: string; // ISO datetime
+  due: string;
   stability: number;
   difficulty: number;
   elapsed_days: number;
@@ -32,8 +32,8 @@ type FsrsState = {
   reps: number;
   lapses: number;
   learning_steps: number;
-  state: number; // ts-fsrs State (0 New, 1 Learning, 2 Review, 3 Relearning)
-  last_review?: string; // ISO datetime
+  state: number;
+  last_review?: string;
 };
 
 type Card = {
@@ -43,12 +43,15 @@ type Card = {
   srs?: FsrsState; // FSRS scheduling state (absent = never reviewed)
 };
 type DeckMap = Record<string, Card[]>;
+/** A card slimmed for the UI, tagged with its source deck (for grade/edit/delete routing). */
+type SlimCard = { front: string; back: string; deck: string };
+/** A card paired with its source deck, for assembling (possibly multi-deck) sessions. */
+type Tagged = { card: Card; deck: string };
 
-/** The flip-card UI resource. Built by `npm run build:ui` into dist/mcp-app.html. */
 const RESOURCE_URI = "ui://memora/review-deck.html";
-
-/** Hard cap so a single create_deck call can never write a pathological file. */
 const MAX_CARDS = 1000;
+/** Separator that turns deck names into a category tree (Anki-style). */
+const PATH_SEP = "::";
 
 // Resolve project paths whether running from source (tsx) or compiled (dist/server.js).
 const fromSource = import.meta.filename.endsWith(".ts");
@@ -64,11 +67,11 @@ const FALLBACK_DECKS: DeckMap = {
   ],
 };
 
-/** Shared structured-output shape for review_deck / create_deck. */
+/** Shared structured-output shape for the deck/review tools. */
 const DECK_OUTPUT = {
   deck: z.string(),
   count: z.number(),
-  cards: z.array(z.object({ front: z.string(), back: z.string() })),
+  cards: z.array(z.object({ front: z.string(), back: z.string(), deck: z.string() })),
   availableDecks: z.array(z.string()),
   dueCount: z.number(),
   newCount: z.number(),
@@ -171,8 +174,6 @@ function loadDecksSync(): DeckMap {
   }
 }
 
-// In-process cache, invalidated by file mtime so live edits are still picked up
-// without re-reading + re-parsing the file on every single tool call.
 let decksCache: { mtimeMs: number; decks: DeckMap } | null = null;
 
 async function loadDecks(): Promise<DeckMap> {
@@ -192,49 +193,80 @@ async function saveDecks(decks: DeckMap): Promise<void> {
   const tmp = DECKS_PATH + ".tmp";
   await fs.writeFile(tmp, JSON.stringify(decks, null, 2) + "\n", "utf-8");
   await fs.rename(tmp, DECKS_PATH);
-  decksCache = null; // force a fresh read on next load
+  decksCache = null;
 }
 
-/** Build the tool result that renders a deck in the flip-card UI. */
+// --- result helpers ------------------------------------------------------
+
+/** Due/new counts for a set of cards. */
+function counts(cards: Card[]): { dueCount: number; newCount: number } {
+  const today = todayISO();
+  return {
+    dueCount: cards.filter((c) => c.due && c.due <= today).length,
+    newCount: cards.filter((c) => !c.due).length,
+  };
+}
+
+/** Order due/overdue/new first, shuffle within each due-date tier, slim to {front,back,deck}. */
+function orderAndSlim(tagged: Tagged[]): SlimCard[] {
+  const today = todayISO();
+  const tiers = new Map<string, Tagged[]>();
+  for (const t of tagged) {
+    const key = t.card.due ?? today;
+    const tier = tiers.get(key);
+    if (tier) tier.push(t);
+    else tiers.set(key, [t]);
+  }
+  const ordered: Tagged[] = [];
+  for (const key of [...tiers.keys()].sort()) ordered.push(...shuffle(tiers.get(key)!));
+  return ordered.map((t) => ({ front: t.card.front, back: t.card.back, deck: t.deck }));
+}
+
+/** Slim a single deck's cards (all from one deck), keeping order. */
+function slimOf(cards: Card[], deck: string): SlimCard[] {
+  return cards.map((c) => ({ front: c.front, back: c.back, deck }));
+}
+
+/** Build the tool result that renders a (possibly multi-deck) session in the flip-card UI. */
 function deckResult(
-  deck: string,
-  cards: Card[],
+  title: string,
+  slim: SlimCard[],
   names: string[],
   note: string | undefined,
   dueCount: number,
   newCount: number,
 ): CallToolResult {
-  const slim = cards.map((c) => ({ front: c.front, back: c.back }));
   const text =
     (note ? note + "\n\n" : "") +
-    `Deck: ${deck} (${slim.length} cards; ${dueCount} due, ${newCount} new)\n` +
+    `Deck: ${title} (${slim.length} cards; ${dueCount} due, ${newCount} new)\n` +
     slim.map((c, i) => `${i + 1}. ${c.front}  ->  ${c.back}`).join("\n") +
     `\n\nAvailable decks: ${names.join(", ")}`;
   return {
     content: [{ type: "text", text }],
-    structuredContent: { deck, count: slim.length, cards: slim, availableDecks: names, dueCount, newCount },
+    structuredContent: { deck: title, count: slim.length, cards: slim, availableDecks: names, dueCount, newCount },
   };
 }
 
 /**
- * Creates the Memora MCP server with review_deck + create_deck + grade_card and the flip-card UI.
+ * Creates the Memora MCP server with all tools and the flip-card UI.
  */
 export function createServer(): McpServer {
   const server = new McpServer({ name: "Memora MCP", version: "0.1.0" });
 
   const startupDecks = Object.keys(loadDecksSync());
 
-  // review_deck: show an existing deck, due cards first.
+  // review_deck: review a single deck, due cards first (shuffled within tiers).
   registerAppTool(
     server,
     "review_deck",
     {
       title: "Review Deck",
       description:
-        "Return the flashcards of a Memora deck and display them as an interactive " +
-        "flip-card review, with due cards first. Available decks: " +
+        "Return the flashcards of a single Memora deck and display them as an interactive " +
+        "flip-card review (due cards first). Available decks: " +
         startupDecks.map((d) => `"${d}"`).join(", ") +
-        ". Decks are read live from data/decks.json.",
+        ". Deck names use \"::\" to form a category tree; use the study tool to review a " +
+        "whole category. Decks are read live from data/decks.json.",
       inputSchema: {
         deck_name: z
           .string()
@@ -248,26 +280,53 @@ export function createServer(): McpServer {
       const decks = await loadDecks();
       const names = Object.keys(decks);
       const name = deck_name && decks[deck_name] ? deck_name : names[0];
-      const all = decks[name];
-      const today = todayISO();
-      const dueCount = all.filter((c) => c.due && c.due <= today).length;
-      const newCount = all.filter((c) => !c.due).length;
-      // Due/overdue/new first, but shuffle within each due-date tier so the
-      // sequence varies and you learn the cards, not their positions.
-      const tiers = new Map<string, Card[]>();
-      for (const c of all) {
-        const key = c.due ?? today;
-        const tier = tiers.get(key);
-        if (tier) tier.push(c);
-        else tiers.set(key, [c]);
-      }
-      const ordered: Card[] = [];
-      for (const key of [...tiers.keys()].sort()) ordered.push(...shuffle(tiers.get(key)!));
-      return deckResult(name, ordered, names, undefined, dueCount, newCount);
+      const tagged: Tagged[] = decks[name].map((c) => ({ card: c, deck: name }));
+      const { dueCount, newCount } = counts(decks[name]);
+      return deckResult(name, orderAndSlim(tagged), names, undefined, dueCount, newCount);
     },
   );
 
-  // create_deck: Claude generates cards from the request/conversation; persist + render them.
+  // study: review every card under a category node (path prefix), merged into one session.
+  registerAppTool(
+    server,
+    "study",
+    {
+      title: "Study Category",
+      description:
+        "Study every card under a category node of the deck tree. Deck names use \"::\" to " +
+        "nest (e.g. \"LLM::Attention\"); studying a node reviews all decks at or under that " +
+        "path, merged and shuffled into one session. Omit path to study all decks. Each card " +
+        "stays attributed to its source deck.",
+      inputSchema: {
+        path: z
+          .string()
+          .optional()
+          .describe("Category path, e.g. \"LLM\" or \"LLM::Attention\". Omit to study all decks."),
+      },
+      outputSchema: DECK_OUTPUT,
+      _meta: { ui: { resourceUri: RESOURCE_URI } },
+    },
+    async ({ path: nodePath }): Promise<CallToolResult> => {
+      const decks = await loadDecks();
+      const names = Object.keys(decks);
+      const prefix = (nodePath ?? "").trim();
+      const matched = prefix
+        ? names.filter((n) => n === prefix || n.startsWith(prefix + PATH_SEP))
+        : names;
+      if (!matched.length) {
+        return { isError: true, content: [{ type: "text", text: `No decks at or under "${prefix}".` }] };
+      }
+      const tagged: Tagged[] = matched.flatMap((n) => decks[n].map((c) => ({ card: c, deck: n })));
+      const all: Card[] = matched.flatMap((n) => decks[n]);
+      const { dueCount, newCount } = counts(all);
+      const title = prefix
+        ? `${prefix} (${matched.length} deck${matched.length > 1 ? "s" : ""})`
+        : `All decks (${matched.length})`;
+      return deckResult(title, orderAndSlim(tagged), names, undefined, dueCount, newCount);
+    },
+  );
+
+  // create_deck: Claude generates cards; persist + render. "::" in the name nests it.
   registerAppTool(
     server,
     "create_deck",
@@ -275,8 +334,9 @@ export function createServer(): McpServer {
       title: "Create Deck",
       description:
         "Create (or extend) a flashcard deck from cards you generate based on the user's " +
-        "request or the current conversation, then display it for review. The deck persists " +
-        "to data/decks.json and can be reopened later with review_deck.\n\n" +
+        "request or the current conversation, then display it for review. Use \"::\" in " +
+        "deck_name to nest under a category (e.g. \"LLM::Attention\"). The deck persists to " +
+        "data/decks.json.\n\n" +
         "Follow Memora's card-quality rules (based on Wozniak's '20 Rules of Formulating " +
         "Knowledge'). The front is the prompt/question, the back is the answer:\n" +
         "1. Minimum information (atomic): each card tests exactly one fact or concept. Split " +
@@ -287,7 +347,7 @@ export function createServer(): McpServer {
         "deletion with the hidden term in [brackets] on the front and that term as the back.\n" +
         "4. Unambiguous: each front must point to exactly one correct answer.",
       inputSchema: {
-        deck_name: z.string().describe("Name for the deck to create or add to."),
+        deck_name: z.string().describe("Name for the deck to create or add to (\"::\" nests it)."),
         cards: z
           .array(z.object({ front: z.string(), back: z.string() }))
           .describe("Flashcards generated from the user's request or the conversation."),
@@ -309,35 +369,32 @@ export function createServer(): McpServer {
       if (!deck_name?.trim() || clean.length === 0) {
         return {
           isError: true,
-          content: [
-            { type: "text", text: "Provide a deck_name and at least one {front, back} card." },
-          ],
+          content: [{ type: "text", text: "Provide a deck_name and at least one {front, back} card." }],
         };
       }
 
       const decks = await loadDecks();
       const existing = decks[deck_name] ?? [];
       const merged = (append ? [...existing, ...clean] : clean).slice(0, MAX_CARDS);
-      await saveDecks({ ...decks, [deck_name]: merged });
+      const updated = { ...decks, [deck_name]: merged };
+      await saveDecks(updated);
 
-      const names = Object.keys({ ...decks, [deck_name]: merged });
-      const today = todayISO();
-      const dueCount = merged.filter((c) => c.due && c.due <= today).length;
-      const newCount = merged.filter((c) => !c.due).length;
+      const names = Object.keys(updated);
+      const { dueCount, newCount } = counts(merged);
       const note = `Saved deck "${deck_name}" with ${merged.length} card(s).`;
-      return deckResult(deck_name, merged, names, note, dueCount, newCount);
+      return deckResult(deck_name, slimOf(merged, deck_name), names, note, dueCount, newCount);
     },
   );
 
-  // grade_card: app-only. The flip-card UI calls this to persist a spaced-repetition result.
+  // grade_card: app-only. The UI calls this to persist an FSRS review result.
   registerAppTool(
     server,
     "grade_card",
     {
       title: "Grade Card",
       description:
-        "Record a spaced-repetition review result for a single card and update its schedule " +
-        "in data/decks.json. Called by the flip-card UI; not intended for direct model use.",
+        "Record a spaced-repetition review result for a single card and update its FSRS " +
+        "schedule in data/decks.json. Called by the flip-card UI; not for direct model use.",
       inputSchema: {
         deck_name: z.string().describe("Deck the card belongs to."),
         front: z.string().describe("The card's front text (identifies the card)."),
@@ -378,8 +435,8 @@ export function createServer(): McpServer {
       title: "Edit Card",
       description:
         "Edit a card's front and/or back in a deck, identified by its current front text, " +
-        "then re-render the deck. Use this to fix wording or correct an answer. Keep edits " +
-        "within Memora's card-quality rules (atomic, concise 1-5 word answers, unambiguous).",
+        "then re-render the deck. Keep edits within Memora's card-quality rules (atomic, " +
+        "concise 1-5 word answers, unambiguous).",
       inputSchema: {
         deck_name: z.string().describe("Deck the card belongs to."),
         front: z.string().describe("The card's CURRENT front text (identifies the card to edit)."),
@@ -409,24 +466,24 @@ export function createServer(): McpServer {
       newCards[idx] = updated;
       await saveDecks({ ...decks, [deck_name]: newCards });
 
-      const names = Object.keys({ ...decks, [deck_name]: newCards });
-      const today = todayISO();
-      const dueCount = newCards.filter((c) => c.due && c.due <= today).length;
-      const newCount = newCards.filter((c) => !c.due).length;
-      return deckResult(deck_name, newCards, names, `Updated a card in "${deck_name}".`, dueCount, newCount);
+      const names = Object.keys(decks);
+      const { dueCount, newCount } = counts(newCards);
+      return deckResult(deck_name, slimOf(newCards, deck_name), names, `Updated a card in "${deck_name}".`, dueCount, newCount);
     },
   );
 
-  // rename_deck: rename a deck, preserving card order and schedules.
+  // rename_deck: rename a deck (also moves it in the tree), preserving cards + schedules.
   registerAppTool(
     server,
     "rename_deck",
     {
       title: "Rename Deck",
-      description: "Rename a deck. Fails if a deck with the new name already exists.",
+      description:
+        "Rename a deck, preserving its cards and schedules. Use \"::\" in the new name to move " +
+        "it under a category. Fails if a deck with the new name already exists.",
       inputSchema: {
         deck_name: z.string().describe("Current deck name."),
-        new_name: z.string().describe("New deck name."),
+        new_name: z.string().describe("New deck name (\"::\" nests it under a category)."),
       },
       outputSchema: DECK_OUTPUT,
       _meta: { ui: { resourceUri: RESOURCE_URI } },
@@ -443,21 +500,18 @@ export function createServer(): McpServer {
       if (newName !== deck_name && decks[newName]) {
         return { isError: true, content: [{ type: "text", text: `A deck named "${newName}" already exists.` }] };
       }
-      // Rebuild preserving key order, renaming in place.
       const renamed: DeckMap = {};
       for (const [k, v] of Object.entries(decks)) renamed[k === deck_name ? newName : k] = v;
       await saveDecks(renamed);
 
       const names = Object.keys(renamed);
       const cards = renamed[newName];
-      const today = todayISO();
-      const dueCount = cards.filter((c) => c.due && c.due <= today).length;
-      const newCount = cards.filter((c) => !c.due).length;
-      return deckResult(newName, cards, names, `Renamed "${deck_name}" to "${newName}".`, dueCount, newCount);
+      const { dueCount, newCount } = counts(cards);
+      return deckResult(newName, slimOf(cards, newName), names, `Renamed "${deck_name}" to "${newName}".`, dueCount, newCount);
     },
   );
 
-  // delete_card: remove a single card (identified by front). Refuses to empty a deck.
+  // delete_card: remove a single card. Refuses to empty a deck.
   registerAppTool(
     server,
     "delete_card",
@@ -486,23 +540,19 @@ export function createServer(): McpServer {
       if (cards.length <= 1) {
         return {
           isError: true,
-          content: [
-            { type: "text", text: `Cannot delete the only card in "${deck_name}"; delete the deck instead.` },
-          ],
+          content: [{ type: "text", text: `Cannot delete the only card in "${deck_name}"; delete the deck instead.` }],
         };
       }
       const newCards = cards.filter((_, i) => i !== idx);
       await saveDecks({ ...decks, [deck_name]: newCards });
 
       const names = Object.keys(decks);
-      const today = todayISO();
-      const dueCount = newCards.filter((c) => c.due && c.due <= today).length;
-      const newCount = newCards.filter((c) => !c.due).length;
-      return deckResult(deck_name, newCards, names, `Deleted a card from "${deck_name}".`, dueCount, newCount);
+      const { dueCount, newCount } = counts(newCards);
+      return deckResult(deck_name, slimOf(newCards, deck_name), names, `Deleted a card from "${deck_name}".`, dueCount, newCount);
     },
   );
 
-  // delete_deck: remove a whole deck (text-only, no UI to render). Refuses the last deck.
+  // delete_deck: remove a whole deck (text-only). Refuses the last deck.
   server.registerTool(
     "delete_deck",
     {

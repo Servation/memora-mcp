@@ -409,3 +409,60 @@
   background-color: #dc2626;
   color: #ffffff;
 }
+
+/* Deck tree */
+.tree {
+  width: 100%;
+  max-height: 320px;
+  overflow-y: auto;
+  text-align: left;
+}
+
+.treeRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.treeToggle {
+  width: 20px;
+  min-width: 20px;
+  background: transparent;
+  border: none;
+  color: var(--color-text-info);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0;
+}
+
+.treeName {
+  flex: 1;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  padding: 4px 0;
+  font-size: var(--font-text-md-size);
+}
+
+.treeName:hover:not(:disabled) {
+  color: var(--color-accent);
+  text-decoration: underline;
+}
+
+.treeBtn {
+  background: transparent;
+  border: var(--border-width-regular) solid
+    color-mix(in srgb, var(--color-text-primary) 22%, transparent);
+  border-radius: var(--border-radius-md);
+  color: var(--color-text-primary);
+  font-size: var(--font-heading-sm-size);
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.treeBtn:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}

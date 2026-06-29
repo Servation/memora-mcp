@@ -8,6 +8,8 @@ Backlog captured 2026-06-28. Check items off as they land.
 - [x] Deck management tools: rename deck, delete deck, delete card.
 - [x] Fuller FSRS scheduler to replace the current SM-2-lite scheduling (via ts-fsrs).
 - [x] "Due today" overview across all decks (pull-based `due_today` tool; cannot self-appear).
+- [x] Category tree (Anki-style "::" deck names) + `study` tool (review a subtree) + tree picker UI.
+- [ ] Mind-map style viewer of the deck tree (deferred; needs a layout library).
 - [ ] Cloze and reverse-card support.
 
 ## Distribution and discoverability
