@@ -108,11 +108,9 @@ memora-mcp/
 └── tsconfig*.json
 ```
 
-## Ideas / roadmap
+## Roadmap
 
-- A fuller FSRS scheduler and a "due today" dashboard across decks.
-- Publish to npm and the official MCP Registry for one-command install.
-- Swap the JSON store for a real backend (any flashcard app's REST API) without changing the UI.
+See [TODO.md](TODO.md) for the full backlog: inline card editing, deck management tools, a fuller FSRS scheduler, npm + MCP Registry publishing, cross-client hosting, and a real demo GIF.
 
 ## License
 
