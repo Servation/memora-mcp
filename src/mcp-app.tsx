@@ -150,19 +150,21 @@ function Deck({
     }
   };
 
-  const deckBar =
+  const deckSwitcher =
     availableDecks.length > 1 ? (
-      <div className={styles.deckBar}>
-        {availableDecks.map((d) => (
-          <button
-            key={d}
-            className={`${styles.deckPill} ${d === deck ? styles.deckPillActive : ""}`}
-            onClick={() => switchDeck(d)}
-            disabled={d === deck || busy}
-          >
-            {d}
-          </button>
-        ))}
+      <div className={styles.deckSwitcher}>
+        <label className={styles.deckSwitcherLabel} htmlFor="deck-select">Deck</label>
+        <select
+          id="deck-select"
+          className={styles.deckSelect}
+          value={deck}
+          onChange={(e) => switchDeck(e.target.value)}
+          disabled={busy}
+        >
+          {availableDecks.map((d) => (
+            <option key={d} value={d}>{d}</option>
+          ))}
+        </select>
       </div>
     ) : null;
 
@@ -172,7 +174,7 @@ function Deck({
         <p className={styles.hint}>
           Waiting for a deck. Ask Claude to call <code>review_deck</code>.
         </p>
-        {deckBar}
+        {deckSwitcher}
       </main>
     );
   }
@@ -196,6 +198,13 @@ function Deck({
     setGrades(cards.map(() => undefined));
     setDone(false);
     setEditing(false);
+  };
+
+  const goTo = (i: number) => {
+    setIndex(Math.min(cards.length - 1, Math.max(0, i)));
+    setFlipped(false);
+    setEditing(false);
+    setConfirmingDelete(false);
   };
 
   const grade = (correct: boolean) => {
@@ -294,7 +303,7 @@ function Deck({
         <div className={styles.controls}>
           <button className={styles.accentBtn} onClick={reset}>Review again</button>
         </div>
-        {deckBar}
+        {deckSwitcher}
       </main>
     );
   }
@@ -304,7 +313,25 @@ function Deck({
   return (
     <main className={styles.main} style={pad}>
       <h3 className={styles.deckTitle}>{deck}</h3>
-      <p className={styles.counter}>Card {index + 1} of {cards.length}</p>
+      <div className={styles.navRow}>
+        <button
+          className={styles.navArrow}
+          onClick={() => goTo(index - 1)}
+          disabled={index === 0}
+          aria-label="Previous card"
+        >
+          &#8249;
+        </button>
+        <span className={styles.counter}>Card {index + 1} of {cards.length}</span>
+        <button
+          className={styles.navArrow}
+          onClick={() => goTo(index + 1)}
+          disabled={index === cards.length - 1}
+          aria-label="Next card"
+        >
+          &#8250;
+        </button>
+      </div>
       {(dueCount > 0 || newCount > 0) && (
         <p className={styles.schedInfo}>{dueCount} due &middot; {newCount} new</p>
       )}
@@ -388,7 +415,7 @@ function Deck({
         </>
       )}
 
-      {deckBar}
+      {deckSwitcher}
     </main>
   );
 }

@@ -154,38 +154,65 @@
   color: var(--color-text-info);
 }
 
-/* Deck picker */
-.deckBar {
+/* Card navigation */
+.navRow {
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--spacing-xs);
+  align-items: center;
   justify-content: center;
-  width: 100%;
-  margin-top: var(--spacing-xs);
+  gap: var(--spacing-sm);
 }
 
-.deckPill {
-  padding: 4px 12px;
-  border: var(--border-width-regular) solid
-    color-mix(in srgb, var(--color-text-primary) 22%, transparent);
-  border-radius: 999px;
+.navArrow {
   background: transparent;
+  border: var(--border-width-regular) solid
+    color-mix(in srgb, var(--color-text-primary) 20%, transparent);
+  border-radius: 999px;
+  width: 28px;
+  height: 28px;
+  line-height: 1;
+  font-size: 18px;
   color: var(--color-text-primary);
-  font-size: var(--font-heading-sm-size);
   cursor: pointer;
+  padding: 0;
 }
 
-.deckPill:hover:not(:disabled) {
+.navArrow:hover:not(:disabled) {
   border-color: var(--color-accent);
   color: var(--color-accent);
 }
 
-.deckPillActive,
-.deckPillActive:hover {
-  background-color: var(--color-accent);
-  border-color: var(--color-accent);
-  color: var(--color-text-on-accent);
+.navArrow:disabled {
+  opacity: 0.35;
   cursor: default;
+}
+
+/* Deck picker (compact dropdown, scales to many decks) */
+.deckSwitcher {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  width: 100%;
+  justify-content: center;
+  margin-top: var(--spacing-xs);
+}
+
+.deckSwitcherLabel {
+  font-size: var(--font-heading-sm-size);
+  color: var(--color-text-info);
+}
+
+.deckSelect {
+  flex: 1;
+  max-width: 280px;
+  font-family: inherit;
+  font-size: var(--font-heading-sm-size);
+  padding: 6px 10px;
+  border-radius: var(--border-radius-md);
+  border: var(--border-width-regular) solid
+    color-mix(in srgb, var(--color-text-primary) 22%, transparent);
+  background-color: var(--color-background-primary);
+  color: var(--color-text-primary);
+  cursor: pointer;
 }
 
 /* Inline card editing */
