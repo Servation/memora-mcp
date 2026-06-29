@@ -1,0 +1,9 @@
+node_modules/
+dist/
+
+# transient atomic-write temp files
+data/*.tmp
+
+# misc
+*.log
+.DS_Store

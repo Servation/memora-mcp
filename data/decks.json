@@ -1,0 +1,124 @@
+{
+  "Countries & Capitals": [
+    {
+      "front": "Capital of France?",
+      "back": "Paris"
+    },
+    {
+      "front": "Capital of Japan?",
+      "back": "Tokyo"
+    },
+    {
+      "front": "Capital of Australia?",
+      "back": "Canberra"
+    }
+  ],
+  "Spanish Basics": [
+    {
+      "front": "hello",
+      "back": "hola"
+    },
+    {
+      "front": "thank you",
+      "back": "gracias"
+    },
+    {
+      "front": "goodbye",
+      "back": "adios"
+    }
+  ],
+  "World Capitals": [
+    {
+      "front": "Capital of Brazil?",
+      "back": "Brasilia"
+    },
+    {
+      "front": "Capital of Canada?",
+      "back": "Ottawa"
+    },
+    {
+      "front": "Capital of Egypt?",
+      "back": "Cairo"
+    },
+    {
+      "front": "Capital of South Korea?",
+      "back": "Seoul"
+    },
+    {
+      "front": "Capital of Norway?",
+      "back": "Oslo"
+    },
+    {
+      "front": "Capital of Kenya?",
+      "back": "Nairobi"
+    }
+  ],
+  "Spanish Verbs": [
+    {
+      "front": "to be (permanent)",
+      "back": "ser"
+    },
+    {
+      "front": "to be (temporary)",
+      "back": "estar"
+    },
+    {
+      "front": "to have",
+      "back": "tener"
+    },
+    {
+      "front": "to go",
+      "back": "ir"
+    },
+    {
+      "front": "to want",
+      "back": "querer"
+    },
+    {
+      "front": "to be able to",
+      "back": "poder"
+    }
+  ],
+  "Spanish Travel Phrases": [
+    {
+      "front": "Where is the bathroom?",
+      "back": "¿Dónde está el baño?"
+    },
+    {
+      "front": "How much does it cost?",
+      "back": "¿Cuánto cuesta?"
+    },
+    {
+      "front": "I would like a coffee, please.",
+      "back": "Quisiera un café, por favor."
+    },
+    {
+      "front": "Do you speak English?",
+      "back": "¿Habla inglés?"
+    },
+    {
+      "front": "Can you help me?",
+      "back": "¿Me puede ayudar?"
+    },
+    {
+      "front": "Where is the train station?",
+      "back": "¿Dónde está la estación de tren?"
+    },
+    {
+      "front": "I don't understand.",
+      "back": "No entiendo."
+    },
+    {
+      "front": "The check, please.",
+      "back": "La cuenta, por favor."
+    },
+    {
+      "front": "What time is it?",
+      "back": "¿Qué hora es?"
+    },
+    {
+      "front": "I need a doctor.",
+      "back": "Necesito un médico."
+    }
+  ]
+}
