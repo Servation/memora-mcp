@@ -10,7 +10,7 @@ Backlog captured 2026-06-28. Check items off as they land.
 - [x] "Due today" overview across all decks (pull-based `due_today` tool; cannot self-appear).
 - [x] Category tree (Anki-style "::" deck names) + `study` tool (review a subtree) + tree picker UI.
 - [x] Trivia / multiple-choice (`create_quiz` + quiz review mode), reusing decks, the tree, and FSRS.
-- [ ] Mind-map style viewer of the deck tree (deferred; needs a layout library).
+- [x] Mind-map style viewer of the deck tree (pure-SVG horizontal tidy tree, no extra library).
 - [ ] Cloze and reverse-card support.
 
 ## Distribution and discoverability

@@ -21,6 +21,7 @@ import {
   TreeView,
   CardList,
   QuizCard,
+  MindMap,
 } from "./deck-lib";
 
 /** true = correct, false = missed, undefined = not graded yet. */
@@ -76,7 +77,7 @@ function Deck({
   const [editFront, setEditFront] = useState("");
   const [editBack, setEditBack] = useState("");
   const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const [view, setView] = useState<"review" | "list" | "tree">("review");
+  const [view, setView] = useState<"review" | "list" | "tree" | "map">("review");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [picked, setPicked] = useState<string | null>(null);
 
@@ -148,6 +149,9 @@ function Deck({
         <button className={styles.treeBtn} onClick={() => setView("tree")} title="Browse the deck tree">
           Tree
         </button>
+        <button className={styles.treeBtn} onClick={() => setView("map")} title="Mind-map of the deck tree">
+          Map
+        </button>
       </div>
     ) : null;
 
@@ -161,6 +165,22 @@ function Deck({
           <TreeView nodes={tree} depth={0} expanded={expanded} onToggle={toggleNode} onPick={onPick} busy={busy} />
         </div>
         <div className={styles.controls}>
+          <button className={styles.accentBtn} onClick={() => setView("map")}>Map view</button>
+          <button className={styles.accentBtn} onClick={() => setView("review")}>Back to review</button>
+        </div>
+      </main>
+    );
+  }
+
+  // --- Mind-map view ---
+  if (view === "map") {
+    return (
+      <main className={styles.main} style={pad}>
+        <h3 className={styles.deckTitle}>Decks</h3>
+        <p className={styles.hint}>Tap a category to study its subtree, or a deck to review it.</p>
+        <MindMap roots={tree} onPick={onPick} busy={busy} />
+        <div className={styles.controls}>
+          <button className={styles.accentBtn} onClick={() => setView("tree")}>List view</button>
           <button className={styles.accentBtn} onClick={() => setView("review")}>Back to review</button>
         </div>
       </main>

@@ -516,3 +516,99 @@
   border-color: #dc2626;
   color: #ffffff;
 }
+
+/* Mind-map view (horizontal markmap-style tidy tree, pure SVG).
+   The scroll container honours the laid-out SVG extent: it scrolls in either
+   axis when the diagram exceeds the panel instead of clipping. */
+.mapScroll {
+  width: 100%;
+  max-height: 60vh;
+  overflow: auto; /* width grows with depth, height with fan-out */
+  text-align: left;
+  border-radius: var(--border-radius-md);
+}
+
+.mapSvg {
+  display: block; /* width/height set inline from the layout extent */
+}
+
+/* connectors: subtle, accent-tinted S-curves */
+.mapEdges path {
+  stroke: color-mix(in srgb, var(--color-accent) 55%, transparent);
+  stroke-width: var(--border-width-regular);
+}
+
+/* a node group is the click/focus target */
+.mapNode {
+  outline: none;
+}
+
+.mapNodeClickable {
+  cursor: pointer;
+}
+
+.mapNode[aria-disabled="true"] {
+  cursor: default;
+  opacity: 0.55;
+}
+
+/* the pill behind the label */
+.mapPill {
+  stroke-width: var(--border-width-regular);
+  transition: fill 0.12s ease, stroke 0.12s ease, stroke-width 0.12s ease;
+}
+
+/* reviewable deck => filled accent-tinted pill + accent border + leading dot */
+.mapNodeDeck .mapPill {
+  fill: color-mix(in srgb, var(--color-accent) 12%, var(--color-background-primary));
+  stroke: color-mix(in srgb, var(--color-accent) 55%, transparent);
+}
+
+.mapDot {
+  fill: var(--color-accent);
+}
+
+/* pure category => outlined (background) pill */
+.mapNodeCat .mapPill {
+  fill: var(--color-background-primary);
+  stroke: color-mix(in srgb, var(--color-text-primary) 30%, transparent);
+}
+
+/* synthetic "Decks" hub (multiple roots): neutral info-filled pill */
+.mapNodeHub .mapPill {
+  fill: var(--color-background-info);
+  stroke: color-mix(in srgb, var(--color-text-primary) 25%, transparent);
+}
+
+/* hover + keyboard focus: lift to full accent. :focus is kept alongside
+   :focus-visible because the latter's heuristics are inconsistent on an SVG
+   <g> in some engines; either guarantees a visible ring in the host. */
+.mapNodeClickable:hover .mapPill,
+.mapNodeClickable:focus .mapPill,
+.mapNodeClickable:focus-visible .mapPill {
+  stroke: var(--color-accent);
+  stroke-width: calc(var(--border-width-regular) * 2);
+  fill: color-mix(in srgb, var(--color-accent) 18%, var(--color-background-primary));
+}
+
+/* label text */
+.mapLabel {
+  font-family: inherit;
+  font-size: var(--font-text-md-size);
+  fill: var(--color-text-primary);
+  font-weight: var(--font-weight-normal);
+  pointer-events: none; /* clicks fall through to the <g> */
+}
+
+.mapNodeDeck .mapLabel {
+  font-weight: var(--font-weight-bold);
+}
+
+.mapNodeCat .mapLabel {
+  fill: var(--color-text-info);
+}
+
+.mapNodeHub .mapLabel {
+  font-weight: var(--font-weight-bold);
+  fill: var(--color-text-info);
+}

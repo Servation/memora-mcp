@@ -19,7 +19,7 @@ Built on the [MCP Apps extension](https://github.com/modelcontextprotocol/ext-ap
 - **`create_deck`**: Claude generates cards from your request or the chat, saves them to `data/decks.json`, and renders them immediately. They persist, so `review_deck` can replay them later. Generation follows Memora's card-quality rules (atomic single-concept cards, 1-5 word answers, active-recall or cloze prompts, unambiguous).
 - **`create_quiz`**: Claude generates multiple-choice questions (`question` + `options` + `answer`); the UI shows the options, reveals correct/wrong on pick, and schedules them with the same FSRS. Quiz and flashcard decks share the same tree and review flow.
 - **`grade_card`** (spaced repetition): each grade persists a per-card **FSRS** schedule (via [`ts-fsrs`](https://github.com/open-spaced-repetition/ts-fsrs)), so weak cards resurface sooner. **`due_today`** summarizes what is due across all your decks.
-- **Decks & categories**: switch decks from a dropdown, or browse a **category tree** (deck names use `::` to nest, e.g. `LLM::Attention`). The **`study`** tool reviews a whole subtree at once, merging its decks into one session.
+- **Decks & categories**: switch decks from a dropdown, browse a **category tree** (deck names use `::` to nest, e.g. `LLM::Attention`), or see the same tree as an inline **mind map**. The **`study`** tool reviews a whole subtree at once, merging its decks into one session.
 - Decks are plain JSON read **live** on every call, so you can hand-edit them or let Claude create them. No database, no external service.
 
 ![Claude builds a deck from the conversation](media/create-deck.svg)
