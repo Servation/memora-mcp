@@ -1,10 +1,10 @@
 /**
- * @file Memora flip-card MCP App UI.
+ * @file Memora flip-card MCP App UI: the stateful review orchestrator.
  *
- * Review: flip + grade (persists FSRS via grade_card). Browse: list of cards.
- * Tree: deck names use "::" as a category tree; tap a category to study its whole
- * subtree (study tool) or a deck to review it. Each card carries its source deck,
- * so grade/edit/delete route correctly even in a merged multi-deck session.
+ * Review: flip + grade (persists FSRS via grade_card). Browse: card list.
+ * Tree: "::" category tree (study a subtree or review a deck). Each card carries
+ * its source deck, so grade/edit/delete route correctly in a merged session.
+ * Pure helpers + the tree/list views live in deck-lib.tsx.
  */
 import type { App, McpUiHostContext } from "@modelcontextprotocol/ext-apps";
 import { useApp } from "@modelcontextprotocol/ext-apps/react";
@@ -12,135 +12,18 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { StrictMode, useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import styles from "./mcp-app.module.css";
+import {
+  type Card,
+  type TreeNode,
+  EMPTY,
+  extractDeck,
+  buildTree,
+  TreeView,
+  CardList,
+} from "./deck-lib";
 
-type Card = { front: string; back: string; deck: string };
 /** true = correct, false = missed, undefined = not graded yet. */
 type Grade = boolean | undefined;
-
-interface DeckData {
-  deck: string;
-  cards: Card[];
-  availableDecks: string[];
-  dueCount: number;
-  newCount: number;
-}
-
-const EMPTY: DeckData = { deck: "", cards: [], availableDecks: [], dueCount: 0, newCount: 0 };
-
-/** Pull the session out of a tool result, with a text fallback. */
-function extractDeck(result: CallToolResult): DeckData {
-  const sc = (
-    result as {
-      structuredContent?: {
-        deck?: string;
-        cards?: Card[];
-        availableDecks?: string[];
-        dueCount?: number;
-        newCount?: number;
-      };
-    }
-  ).structuredContent;
-  if (sc?.cards?.length) {
-    return {
-      deck: sc.deck ?? "Deck",
-      cards: sc.cards,
-      availableDecks: sc.availableDecks ?? [],
-      dueCount: sc.dueCount ?? 0,
-      newCount: sc.newCount ?? 0,
-    };
-  }
-
-  const text =
-    (result.content?.find((c) => c.type === "text") as { text?: string } | undefined)?.text ?? "";
-  const deck = text.match(/^Deck:\s*(.+?)\s*\(/m)?.[1] ?? "Deck";
-  const cards: Card[] = [];
-  for (const line of text.split("\n")) {
-    const m = line.match(/^\s*\d+\.\s*(.+?)\s*->\s*(.+?)\s*$/);
-    if (m) cards.push({ front: m[1], back: m[2], deck });
-  }
-  const availableDecks = (text.match(/^Available decks:\s*(.+)$/m)?.[1] ?? "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-  return { deck, cards, availableDecks, dueCount: 0, newCount: 0 };
-}
-
-// --- deck tree -----------------------------------------------------------
-
-type TreeNode = { name: string; path: string; children: TreeNode[]; isDeck: boolean };
-
-/** Build a tree from "::"-separated deck names. */
-function buildTree(names: string[]): TreeNode[] {
-  const roots: TreeNode[] = [];
-  for (const full of names) {
-    const segs = full.split("::").map((s) => s.trim()).filter(Boolean);
-    let level = roots;
-    let prefix = "";
-    segs.forEach((seg, i) => {
-      prefix = prefix ? prefix + "::" + seg : seg;
-      let node = level.find((n) => n.name === seg);
-      if (!node) {
-        node = { name: seg, path: prefix, children: [], isDeck: false };
-        level.push(node);
-      }
-      if (i === segs.length - 1) node.isDeck = true;
-      level = node.children;
-    });
-  }
-  return roots;
-}
-
-function TreeView({
-  nodes,
-  depth,
-  expanded,
-  onToggle,
-  onPick,
-  busy,
-}: {
-  nodes: TreeNode[];
-  depth: number;
-  expanded: Set<string>;
-  onToggle: (path: string) => void;
-  onPick: (node: TreeNode) => void;
-  busy: boolean;
-}) {
-  return (
-    <>
-      {nodes.map((node) => {
-        const hasChildren = node.children.length > 0;
-        const open = expanded.has(node.path);
-        return (
-          <div key={node.path}>
-            <div className={styles.treeRow} style={{ paddingLeft: depth * 16 }}>
-              <button
-                className={styles.treeToggle}
-                onClick={() => hasChildren && onToggle(node.path)}
-                aria-label={hasChildren ? (open ? "Collapse" : "Expand") : undefined}
-                aria-hidden={!hasChildren}
-              >
-                {hasChildren ? (open ? "▾" : "▸") : ""}
-              </button>
-              <button className={styles.treeName} onClick={() => onPick(node)} disabled={busy}>
-                {node.name}
-              </button>
-            </div>
-            {hasChildren && open && (
-              <TreeView
-                nodes={node.children}
-                depth={depth + 1}
-                expanded={expanded}
-                onToggle={onToggle}
-                onPick={onPick}
-                busy={busy}
-              />
-            )}
-          </div>
-        );
-      })}
-    </>
-  );
-}
 
 function MemoraApp() {
   const [result, setResult] = useState<CallToolResult | null>(null);
@@ -193,7 +76,6 @@ function Deck({
   const [editBack, setEditBack] = useState("");
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [view, setView] = useState<"review" | "list" | "tree">("review");
-  const [confirmRow, setConfirmRow] = useState<number | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -205,7 +87,6 @@ function Deck({
     setEditing(false);
     setConfirmingDelete(false);
     setView("review");
-    setConfirmRow(null);
   }, [result]);
 
   const pad = {
@@ -394,42 +275,15 @@ function Deck({
       <main className={styles.main} style={pad}>
         <h3 className={styles.deckTitle}>{deck}</h3>
         <p className={styles.counter}>{cards.length} cards</p>
-        <ul className={styles.cardList}>
-          {cards.map((c, i) => (
-            <li key={i} className={styles.cardRow}>
-              <button
-                className={styles.cardRowMain}
-                onClick={() => {
-                  setIndex(i);
-                  setFlipped(false);
-                  setView("review");
-                }}
-              >
-                <span className={styles.cardRowFront}>{c.front}</span>
-                <span className={styles.cardRowBack}>{c.back}</span>
-              </button>
-              {cards.length > 1 &&
-                (confirmRow === i ? (
-                  <span className={styles.rowConfirm}>
-                    <button className={styles.rowCancel} onClick={() => setConfirmRow(null)}>Cancel</button>
-                    <button
-                      className={styles.rowDelete}
-                      onClick={() => {
-                        removeCardAt(i);
-                        setConfirmRow(null);
-                      }}
-                    >
-                      Delete
-                    </button>
-                  </span>
-                ) : (
-                  <button className={styles.rowDeleteIcon} onClick={() => setConfirmRow(i)} aria-label="Delete card">
-                    &times;
-                  </button>
-                ))}
-            </li>
-          ))}
-        </ul>
+        <CardList
+          cards={cards}
+          onOpen={(i) => {
+            setIndex(i);
+            setFlipped(false);
+            setView("review");
+          }}
+          onDelete={(i) => removeCardAt(i)}
+        />
         <div className={styles.controls}>
           <button className={styles.accentBtn} onClick={() => setView("review")}>Back to review</button>
         </div>

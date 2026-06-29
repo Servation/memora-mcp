@@ -1,13 +1,13 @@
 /**
- * Memora MCP server.
+ * Memora MCP server: tool + resource wiring.
  *
- * Decks live in editable data/decks.json, read live (mtime-cached). Deck names use
- * "::" to form a category tree (e.g. "LLM::Attention"); the `study` tool reviews a
- * whole subtree, merging its decks into one session (each card stays attributed to
- * its source deck so grading/editing routes correctly).
+ * Data model, storage, and the result builder live in decks.ts; FSRS scheduling
+ * and ordering live in scheduling.ts. This file just registers the MCP tools and
+ * the flip-card UI resource.
  *
- * Tools: review_deck, study, create_deck, grade_card, edit_card, rename_deck,
- * delete_card, delete_deck, due_today. Spaced repetition is FSRS (ts-fsrs).
+ * Deck names use "::" to form a category tree; the `study` tool reviews a whole
+ * subtree, merging its decks into one session (each card stays attributed to its
+ * source deck so grading/editing routes correctly).
  */
 import {
   registerAppResource,
@@ -18,54 +18,25 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult, ReadResourceResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import fs from "node:fs/promises";
-import { readFileSync } from "node:fs";
 import path from "node:path";
-import { fsrs, generatorParameters, createEmptyCard, Rating, type Card as FsrsCard } from "ts-fsrs";
-
-/** Full FSRS card state (ts-fsrs), persisted so reviews can be reconstructed. */
-type FsrsState = {
-  due: string;
-  stability: number;
-  difficulty: number;
-  elapsed_days: number;
-  scheduled_days: number;
-  reps: number;
-  lapses: number;
-  learning_steps: number;
-  state: number;
-  last_review?: string;
-};
-
-type Card = {
-  front: string;
-  back: string;
-  due?: string; // YYYY-MM-DD next-due date (derived from FSRS), for ordering + due_today
-  srs?: FsrsState; // FSRS scheduling state (absent = never reviewed)
-};
-type DeckMap = Record<string, Card[]>;
-/** A card slimmed for the UI, tagged with its source deck (for grade/edit/delete routing). */
-type SlimCard = { front: string; back: string; deck: string };
-/** A card paired with its source deck, for assembling (possibly multi-deck) sessions. */
-type Tagged = { card: Card; deck: string };
+import { schedule, counts } from "./scheduling.js";
+import {
+  type Card,
+  type DeckMap,
+  type Tagged,
+  DIST_DIR,
+  loadDecks,
+  loadDecksSync,
+  saveDecks,
+  orderAndSlim,
+  slimOf,
+  deckResult,
+} from "./decks.js";
 
 const RESOURCE_URI = "ui://memora/review-deck.html";
 const MAX_CARDS = 1000;
 /** Separator that turns deck names into a category tree (Anki-style). */
 const PATH_SEP = "::";
-
-// Resolve project paths whether running from source (tsx) or compiled (dist/server.js).
-const fromSource = import.meta.filename.endsWith(".ts");
-const PROJECT_ROOT = fromSource ? import.meta.dirname : path.join(import.meta.dirname, "..");
-const DIST_DIR = fromSource ? path.join(import.meta.dirname, "dist") : import.meta.dirname;
-const DECKS_PATH = path.join(PROJECT_ROOT, "data", "decks.json");
-
-/** Used only if data/decks.json is missing or invalid. */
-const FALLBACK_DECKS: DeckMap = {
-  "Countries & Capitals": [
-    { front: "Capital of France?", back: "Paris" },
-    { front: "Capital of Japan?", back: "Tokyo" },
-  ],
-};
 
 /** Shared structured-output shape for the deck/review tools. */
 const DECK_OUTPUT = {
@@ -76,176 +47,6 @@ const DECK_OUTPUT = {
   dueCount: z.number(),
   newCount: z.number(),
 };
-
-// --- spaced repetition (FSRS via ts-fsrs) --------------------------------
-
-function todayISO(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
-/** Fisher-Yates shuffle (returns a new array). */
-function shuffle<T>(arr: T[]): T[] {
-  const a = arr.slice();
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-
-// Day-scale scheduling for a once-a-day study loop: no short same-day learning steps.
-const scheduler = fsrs(
-  generatorParameters({ enable_fuzz: false, learning_steps: [], relearning_steps: [] }),
-);
-
-/** Reconstruct a ts-fsrs Card from stored state, or a fresh one. */
-function toFsrsCard(card: Card, now: Date): FsrsCard {
-  const s = card.srs;
-  if (!s) return createEmptyCard(now);
-  return {
-    due: new Date(s.due),
-    stability: s.stability,
-    difficulty: s.difficulty,
-    elapsed_days: s.elapsed_days,
-    scheduled_days: s.scheduled_days,
-    reps: s.reps,
-    lapses: s.lapses,
-    learning_steps: s.learning_steps,
-    state: s.state,
-    last_review: s.last_review ? new Date(s.last_review) : undefined,
-  } as FsrsCard;
-}
-
-/** Apply one review result with FSRS, returning a NEW card with updated schedule. */
-function schedule(card: Card, correct: boolean): Card {
-  const now = new Date();
-  const { card: next } = scheduler.next(
-    toFsrsCard(card, now),
-    now,
-    correct ? Rating.Good : Rating.Again,
-  );
-  const srs: FsrsState = {
-    due: next.due.toISOString(),
-    stability: Math.round(next.stability * 1000) / 1000,
-    difficulty: Math.round(next.difficulty * 1000) / 1000,
-    elapsed_days: next.elapsed_days,
-    scheduled_days: next.scheduled_days,
-    reps: next.reps,
-    lapses: next.lapses,
-    learning_steps: next.learning_steps,
-    state: next.state,
-    last_review: next.last_review ? next.last_review.toISOString() : now.toISOString(),
-  };
-  return { front: card.front, back: card.back, due: next.due.toISOString().slice(0, 10), srs };
-}
-
-// --- deck storage --------------------------------------------------------
-
-function toCard(c: unknown): Card | null {
-  if (!c || typeof c !== "object") return null;
-  const o = c as Record<string, unknown>;
-  if (typeof o.front !== "string" || typeof o.back !== "string") return null;
-  const card: Card = { front: o.front, back: o.back };
-  if (typeof o.due === "string") card.due = o.due;
-  if (o.srs && typeof o.srs === "object" && typeof (o.srs as { stability?: unknown }).stability === "number") {
-    card.srs = o.srs as FsrsState;
-  }
-  return card;
-}
-
-/** Parse + validate the deck map, dropping malformed decks/cards. */
-function parseDecks(raw: string): DeckMap {
-  const data = JSON.parse(raw) as Record<string, unknown[]>;
-  const out: DeckMap = {};
-  for (const [name, cards] of Object.entries(data)) {
-    if (Array.isArray(cards)) {
-      const cleaned = cards.map(toCard).filter((c): c is Card => c !== null);
-      if (cleaned.length) out[name] = cleaned;
-    }
-  }
-  return Object.keys(out).length ? out : FALLBACK_DECKS;
-}
-
-function loadDecksSync(): DeckMap {
-  try {
-    return parseDecks(readFileSync(DECKS_PATH, "utf-8"));
-  } catch {
-    return FALLBACK_DECKS;
-  }
-}
-
-let decksCache: { mtimeMs: number; decks: DeckMap } | null = null;
-
-async function loadDecks(): Promise<DeckMap> {
-  try {
-    const { mtimeMs } = await fs.stat(DECKS_PATH);
-    if (decksCache && decksCache.mtimeMs === mtimeMs) return decksCache.decks;
-    const decks = parseDecks(await fs.readFile(DECKS_PATH, "utf-8"));
-    decksCache = { mtimeMs, decks };
-    return decks;
-  } catch {
-    return FALLBACK_DECKS;
-  }
-}
-
-/** Write decks atomically (temp + rename) so concurrent reads never see a partial file. */
-async function saveDecks(decks: DeckMap): Promise<void> {
-  const tmp = DECKS_PATH + ".tmp";
-  await fs.writeFile(tmp, JSON.stringify(decks, null, 2) + "\n", "utf-8");
-  await fs.rename(tmp, DECKS_PATH);
-  decksCache = null;
-}
-
-// --- result helpers ------------------------------------------------------
-
-/** Due/new counts for a set of cards. */
-function counts(cards: Card[]): { dueCount: number; newCount: number } {
-  const today = todayISO();
-  return {
-    dueCount: cards.filter((c) => c.due && c.due <= today).length,
-    newCount: cards.filter((c) => !c.due).length,
-  };
-}
-
-/** Order due/overdue/new first, shuffle within each due-date tier, slim to {front,back,deck}. */
-function orderAndSlim(tagged: Tagged[]): SlimCard[] {
-  const today = todayISO();
-  const tiers = new Map<string, Tagged[]>();
-  for (const t of tagged) {
-    const key = t.card.due ?? today;
-    const tier = tiers.get(key);
-    if (tier) tier.push(t);
-    else tiers.set(key, [t]);
-  }
-  const ordered: Tagged[] = [];
-  for (const key of [...tiers.keys()].sort()) ordered.push(...shuffle(tiers.get(key)!));
-  return ordered.map((t) => ({ front: t.card.front, back: t.card.back, deck: t.deck }));
-}
-
-/** Slim a single deck's cards (all from one deck), keeping order. */
-function slimOf(cards: Card[], deck: string): SlimCard[] {
-  return cards.map((c) => ({ front: c.front, back: c.back, deck }));
-}
-
-/** Build the tool result that renders a (possibly multi-deck) session in the flip-card UI. */
-function deckResult(
-  title: string,
-  slim: SlimCard[],
-  names: string[],
-  note: string | undefined,
-  dueCount: number,
-  newCount: number,
-): CallToolResult {
-  const text =
-    (note ? note + "\n\n" : "") +
-    `Deck: ${title} (${slim.length} cards; ${dueCount} due, ${newCount} new)\n` +
-    slim.map((c, i) => `${i + 1}. ${c.front}  ->  ${c.back}`).join("\n") +
-    `\n\nAvailable decks: ${names.join(", ")}`;
-  return {
-    content: [{ type: "text", text }],
-    structuredContent: { deck: title, count: slim.length, cards: slim, availableDecks: names, dueCount, newCount },
-  };
-}
 
 /**
  * Creates the Memora MCP server with all tools and the flip-card UI.
@@ -376,7 +177,7 @@ export function createServer(): McpServer {
       const decks = await loadDecks();
       const existing = decks[deck_name] ?? [];
       const merged = (append ? [...existing, ...clean] : clean).slice(0, MAX_CARDS);
-      const updated = { ...decks, [deck_name]: merged };
+      const updated: DeckMap = { ...decks, [deck_name]: merged };
       await saveDecks(updated);
 
       const names = Object.keys(updated);
@@ -604,7 +405,7 @@ export function createServer(): McpServer {
     },
     async (): Promise<CallToolResult> => {
       const decks = await loadDecks();
-      const today = todayISO();
+      const today = new Date().toISOString().slice(0, 10);
       const rows = Object.entries(decks).map(([name, cards]) => ({
         deck: name,
         dueCount: cards.filter((c) => c.due && c.due <= today).length,
