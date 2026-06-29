@@ -187,3 +187,79 @@
   color: var(--color-text-on-accent);
   cursor: default;
 }
+
+/* Inline card editing */
+.editForm {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  text-align: left;
+}
+
+.editLabel {
+  font-size: var(--font-heading-sm-size);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-info);
+}
+
+.editInput {
+  width: 100%;
+  font-family: inherit;
+  font-size: var(--font-text-md-size);
+  padding: var(--spacing-sm);
+  border-radius: var(--border-radius-md);
+  border: var(--border-width-regular) solid
+    color-mix(in srgb, var(--color-text-primary) 25%, transparent);
+  background-color: var(--color-background-primary);
+  color: var(--color-text-primary);
+  resize: vertical;
+}
+
+.editInput:focus-visible {
+  outline: calc(var(--border-width-regular) * 2) solid var(--color-ring-primary);
+  outline-offset: 1px;
+}
+
+.editActions {
+  display: flex;
+  gap: var(--spacing-sm);
+  width: 100%;
+  margin-top: var(--spacing-xs);
+}
+
+.editActions button {
+  flex: 1;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--border-radius-md);
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+  border: none;
+}
+
+.saveBtn {
+  background-color: var(--color-accent);
+  color: var(--color-text-on-accent);
+}
+
+.saveBtn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.cancelBtn {
+  background-color: transparent;
+  color: var(--color-text-primary);
+  border: var(--border-width-regular) solid
+    color-mix(in srgb, var(--color-text-primary) 25%, transparent);
+}
+
+.editTrigger {
+  background: transparent;
+  border: none;
+  color: var(--color-text-info);
+  font-size: var(--font-heading-sm-size);
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+}

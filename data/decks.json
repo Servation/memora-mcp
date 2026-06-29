@@ -56,7 +56,11 @@
   "Spanish Verbs": [
     {
       "front": "to be (permanent)",
-      "back": "ser"
+      "back": "ser",
+      "ease": 2.3,
+      "reps": 0,
+      "interval": 1,
+      "due": "2026-06-30"
     },
     {
       "front": "to be (temporary)",
@@ -123,36 +127,92 @@
   ],
   "Tech & AI Briefing — June 29, 2026": [
     {
-      "front": "What three tiers make up OpenAI's GPT-5.6 series?",
-      "back": "Sol (flagship), Terra (balanced everyday), and Luna (fast/cheap)."
+      "front": "GPT-5.6's flagship tier?",
+      "back": "Sol",
+      "due": "2026-06-30",
+      "interval": 1,
+      "ease": 2.6,
+      "reps": 1
+    },
+    {
+      "front": "GPT-5.6's balanced, everyday tier?",
+      "back": "Terra",
+      "due": "2026-06-30",
+      "interval": 1,
+      "ease": 2.6,
+      "reps": 1
+    },
+    {
+      "front": "GPT-5.6's fast, cheap tier?",
+      "back": "Luna",
+      "due": "2026-06-30",
+      "interval": 1,
+      "ease": 2.6,
+      "reps": 1
     },
     {
       "front": "How is GPT-5.6 being released?",
-      "back": "As a limited preview requiring US government sign-off customer by customer — the same export-control regime applied to Anthropic's Fable and Mythos models."
+      "back": "Limited preview",
+      "due": "2026-06-30",
+      "interval": 1,
+      "ease": 2.6,
+      "reps": 1
     },
     {
-      "front": "What benchmark record did GPT-5.6 Sol Ultra set?",
-      "back": "91.9% on Terminal-Bench 2.1, up from GPT-5.5's 83.4% — its biggest architecture change since GPT-5."
+      "front": "What approval does each GPT-5.6 customer need?",
+      "back": "US government sign-off"
     },
     {
-      "front": "What did the US government do regarding Claude Mythos 5 on June 29, 2026?",
-      "back": "Partially lifted its export ban, allowing access for critical-infrastructure defenders — signaling frontier models are now treated as export-controlled dual-use tech."
+      "front": "GPT-5.6's export regime was first applied to which Anthropic models?",
+      "back": "Fable and Mythos"
     },
     {
-      "front": "Why did Google restrict Meta's access to Gemini compute?",
-      "back": "Meta requested more capacity than Google could supply; the limits disrupted some of Meta's internal AI projects and forced it to optimize token usage — highlighting acute compute bottlenecks."
+      "front": "GPT-5.6 Sol Ultra's score on Terminal-Bench 2.1?",
+      "back": "91.9%"
     },
     {
-      "front": "What ~$8 billion acquisition did Rocket Lab announce?",
-      "back": "It agreed to acquire satellite communications company Iridium in a cash-and-stock deal, expanding beyond launch into higher-margin satellite comms."
+      "front": "GPT-5.5's score on Terminal-Bench 2.1?",
+      "back": "83.4%"
     },
     {
-      "front": "How did markets move on June 29, 2026?",
-      "back": "Nasdaq rebounded on mega-cap strength — Amazon +4%, Microsoft ~+2% — while Micron fell 6%, dragging chipmakers. SpaceX is set to join the Nasdaq-100."
+      "front": "On June 29, 2026 the US partially lifted the export ban on which model?",
+      "back": "Claude Mythos 5"
     },
     {
-      "front": "What EU regulatory concern did Google raise?",
-      "back": "That proposed Digital Markets Act remedies forcing it to share more search and Android data with rivals could create privacy and cybersecurity risks."
+      "front": "Who gained access after Mythos 5's ban was eased?",
+      "back": "Critical-infrastructure defenders"
+    },
+    {
+      "front": "Why did Google cap Meta's Gemini compute?",
+      "back": "Insufficient capacity"
+    },
+    {
+      "front": "What ~$8B company did Rocket Lab agree to acquire?",
+      "back": "Iridium"
+    },
+    {
+      "front": "What does Iridium provide?",
+      "back": "Satellite communications"
+    },
+    {
+      "front": "How did the Nasdaq move on June 29, 2026?",
+      "back": "Rebounded"
+    },
+    {
+      "front": "How much did Micron fall on June 29, 2026?",
+      "back": "6%"
+    },
+    {
+      "front": "Which company is set to join the Nasdaq-100?",
+      "back": "SpaceX"
+    },
+    {
+      "front": "Which EU law's remedies did Google warn about?",
+      "back": "Digital Markets Act"
+    },
+    {
+      "front": "Google said DMA data-sharing creates what two risks?",
+      "back": "Privacy and cybersecurity"
     }
   ]
 }

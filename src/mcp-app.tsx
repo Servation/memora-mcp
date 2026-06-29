@@ -1,11 +1,10 @@
 /**
  * @file Memora flip-card MCP App UI.
  *
- * Flip a card, grade it Right/Wrong. Each grade:
- *  - calls `grade_card` to persist a spaced-repetition schedule (server side),
- *  - calls `updateModelContext` so the model knows live progress.
- * Finishing the deck calls `sendMessage` so Claude reacts to the score.
- * A deck-picker switches decks via `review_deck` without leaving the UI.
+ * Flip a card, grade it Right/Wrong (persists a spaced-repetition schedule via
+ * grade_card and updates model context). Finishing the deck sends a summary so
+ * Claude reacts. A deck-picker switches decks. Each card can be edited inline,
+ * persisting via edit_card while staying on the same card.
  */
 import type { App, McpUiHostContext } from "@modelcontextprotocol/ext-apps";
 import { useApp } from "@modelcontextprotocol/ext-apps/react";
@@ -29,8 +28,8 @@ interface DeckData {
 const EMPTY: DeckData = { deck: "", cards: [], availableDecks: [], dueCount: 0, newCount: 0 };
 
 /**
- * Pull the deck out of a review_deck/create_deck result: prefer structuredContent,
- * fall back to parsing the text so the UI works even if a host does not forward it.
+ * Pull the deck out of a tool result: prefer structuredContent, fall back to
+ * parsing the text so the UI works even if a host does not forward it.
  */
 function extractDeck(result: CallToolResult): DeckData {
   const sc = (
@@ -106,23 +105,27 @@ function Deck({
   setResult: (r: CallToolResult) => void;
   hostContext?: McpUiHostContext;
 }) {
-  const { deck, cards, availableDecks, dueCount, newCount } = useMemo(
-    () => (result ? extractDeck(result) : EMPTY),
-    [result],
-  );
+  const meta = useMemo(() => (result ? extractDeck(result) : EMPTY), [result]);
+  const { deck, availableDecks, dueCount, newCount } = meta;
 
+  const [cards, setCards] = useState<Card[]>(meta.cards);
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [grades, setGrades] = useState<Grade[]>([]);
   const [done, setDone] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editFront, setEditFront] = useState("");
+  const [editBack, setEditBack] = useState("");
 
   // Reset to a fresh review whenever a new deck arrives.
   useEffect(() => {
+    setCards(meta.cards);
     setIndex(0);
     setFlipped(false);
-    setGrades(cards.map(() => undefined));
+    setGrades(meta.cards.map(() => undefined));
     setDone(false);
+    setEditing(false);
   }, [result]);
 
   const pad = {
@@ -190,6 +193,7 @@ function Deck({
     setFlipped(false);
     setGrades(cards.map(() => undefined));
     setDone(false);
+    setEditing(false);
   };
 
   const grade = (correct: boolean) => {
@@ -201,12 +205,12 @@ function Deck({
     setGrades(next);
     setFlipped(false);
 
-    // Persist the spaced-repetition schedule for this card (server side).
+    // Persist the spaced-repetition schedule for this card.
     app
       .callServerTool({ name: "grade_card", arguments: { deck_name: deck, front: card.front, correct } })
       .catch(() => {});
 
-    // Keep the model aware of live progress (silent).
+    // Keep the model aware of live progress.
     app.updateModelContext({ content: [{ type: "text", text: contextMarkdown(next) }] }).catch(() => {});
 
     const gradedCount = next.filter((g) => g !== undefined).length;
@@ -221,6 +225,33 @@ function Deck({
     } else {
       setIndex((i) => Math.min(cards.length - 1, i + 1));
     }
+  };
+
+  const startEdit = () => {
+    setEditFront(cards[index].front);
+    setEditBack(cards[index].back);
+    setFlipped(false);
+    setEditing(true);
+  };
+
+  const cancelEdit = () => setEditing(false);
+
+  const saveEdit = () => {
+    const nf = editFront.trim();
+    const nb = editBack.trim();
+    if (!nf || !nb) return;
+    const original = cards[index].front;
+    const newCards = cards.slice();
+    newCards[index] = { front: nf, back: nb };
+    setCards(newCards);
+    setEditing(false);
+    // Persist; stay on the same card (do not re-render from the tool result).
+    app
+      .callServerTool({
+        name: "edit_card",
+        arguments: { deck_name: deck, front: original, new_front: nf, new_back: nb },
+      })
+      .catch(() => {});
   };
 
   if (done) {
@@ -258,41 +289,74 @@ function Deck({
       <h3 className={styles.deckTitle}>{deck}</h3>
       <p className={styles.counter}>Card {index + 1} of {cards.length}</p>
       {(dueCount > 0 || newCount > 0) && (
-        <p className={styles.schedInfo}>{dueCount} due · {newCount} new</p>
+        <p className={styles.schedInfo}>{dueCount} due &middot; {newCount} new</p>
       )}
 
-      <div
-        className={styles.scene}
-        onClick={() => setFlipped((f) => !f)}
-        role="button"
-        tabIndex={0}
-        aria-label="Flashcard, click to flip"
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            setFlipped((f) => !f);
-          }
-        }}
-      >
-        <div className={`${styles.card} ${flipped ? styles.cardFlipped : ""}`}>
-          <div className={styles.face}>
-            <span className={styles.faceLabel}>Front</span>
-            {card.front}
+      {editing ? (
+        <div className={styles.editForm}>
+          <label className={styles.editLabel}>Front</label>
+          <textarea
+            className={styles.editInput}
+            rows={2}
+            value={editFront}
+            onChange={(e) => setEditFront(e.target.value)}
+          />
+          <label className={styles.editLabel}>Back</label>
+          <textarea
+            className={styles.editInput}
+            rows={2}
+            value={editBack}
+            onChange={(e) => setEditBack(e.target.value)}
+          />
+          <div className={styles.editActions}>
+            <button className={styles.cancelBtn} onClick={cancelEdit}>Cancel</button>
+            <button
+              className={styles.saveBtn}
+              onClick={saveEdit}
+              disabled={!editFront.trim() || !editBack.trim()}
+            >
+              Save
+            </button>
           </div>
-          <div className={`${styles.face} ${styles.faceBack}`}>
-            <span className={styles.faceLabel}>Back</span>
-            {card.back}
-          </div>
-        </div>
-      </div>
-
-      {flipped ? (
-        <div className={styles.controls}>
-          <button className={styles.gradeWrong} onClick={() => grade(false)}>Missed it</button>
-          <button className={styles.gradeRight} onClick={() => grade(true)}>Got it</button>
         </div>
       ) : (
-        <p className={styles.hint}>Click the card to reveal the answer</p>
+        <>
+          <div
+            className={styles.scene}
+            onClick={() => setFlipped((f) => !f)}
+            role="button"
+            tabIndex={0}
+            aria-label="Flashcard, click to flip"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                setFlipped((f) => !f);
+              }
+            }}
+          >
+            <div className={`${styles.card} ${flipped ? styles.cardFlipped : ""}`}>
+              <div className={styles.face}>
+                <span className={styles.faceLabel}>Front</span>
+                {card.front}
+              </div>
+              <div className={`${styles.face} ${styles.faceBack}`}>
+                <span className={styles.faceLabel}>Back</span>
+                {card.back}
+              </div>
+            </div>
+          </div>
+
+          {flipped ? (
+            <div className={styles.controls}>
+              <button className={styles.gradeWrong} onClick={() => grade(false)}>Missed it</button>
+              <button className={styles.gradeRight} onClick={() => grade(true)}>Got it</button>
+            </div>
+          ) : (
+            <p className={styles.hint}>Click the card to reveal the answer</p>
+          )}
+
+          <button className={styles.editTrigger} onClick={startEdit}>Edit card</button>
+        </>
       )}
 
       {deckBar}

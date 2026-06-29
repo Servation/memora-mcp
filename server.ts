@@ -330,6 +330,53 @@ export function createServer(): McpServer {
     },
   );
 
+  // edit_card: change a card's front and/or back (identified by its current front).
+  registerAppTool(
+    server,
+    "edit_card",
+    {
+      title: "Edit Card",
+      description:
+        "Edit a card's front and/or back in a deck, identified by its current front text, " +
+        "then re-render the deck. Use this to fix wording or correct an answer. Keep edits " +
+        "within Memora's card-quality rules (atomic, concise 1-5 word answers, unambiguous).",
+      inputSchema: {
+        deck_name: z.string().describe("Deck the card belongs to."),
+        front: z.string().describe("The card's CURRENT front text (identifies the card to edit)."),
+        new_front: z.string().optional().describe("New front text. Omit to keep the current front."),
+        new_back: z.string().optional().describe("New back text. Omit to keep the current back."),
+      },
+      outputSchema: DECK_OUTPUT,
+      _meta: { ui: { resourceUri: RESOURCE_URI } },
+    },
+    async ({ deck_name, front, new_front, new_back }): Promise<CallToolResult> => {
+      const decks = await loadDecks();
+      const cards = decks[deck_name];
+      if (!cards) {
+        return { isError: true, content: [{ type: "text", text: `Deck "${deck_name}" not found.` }] };
+      }
+      const idx = cards.findIndex((c) => c.front === front);
+      if (idx < 0) {
+        return { isError: true, content: [{ type: "text", text: `Card not found in "${deck_name}".` }] };
+      }
+      const nf = new_front?.trim();
+      const nb = new_back?.trim();
+      if (!nf && !nb) {
+        return { isError: true, content: [{ type: "text", text: "Provide new_front and/or new_back." }] };
+      }
+      const updated: Card = { ...cards[idx], ...(nf ? { front: nf } : {}), ...(nb ? { back: nb } : {}) };
+      const newCards = cards.slice();
+      newCards[idx] = updated;
+      await saveDecks({ ...decks, [deck_name]: newCards });
+
+      const names = Object.keys({ ...decks, [deck_name]: newCards });
+      const today = todayISO();
+      const dueCount = newCards.filter((c) => c.due && c.due <= today).length;
+      const newCount = newCards.filter((c) => !c.due).length;
+      return deckResult(deck_name, newCards, names, `Updated a card in "${deck_name}".`, dueCount, newCount);
+    },
+  );
+
   // Resource: the bundled flip-card HTML/JS the host renders in a sandboxed iframe.
   registerAppResource(
     server,

@@ -3,8 +3,8 @@
 Backlog captured 2026-06-28. Check items off as they land.
 
 ## Features
-- [ ] `edit_card` tool: edit a single card's front/back (e.g. "change the back of card 3 to ...").
-- [ ] Editable flip-card UI: edit card text inline with a Save button that persists to `data/decks.json`.
+- [x] `edit_card` tool: edit a single card's front/back (e.g. "change the back of card 3 to ...").
+- [x] Editable flip-card UI: edit card text inline with a Save button that persists to `data/decks.json`.
 - [ ] Deck management tools: rename deck, delete deck, delete card.
 - [ ] Fuller FSRS scheduler to replace the current SM-2-lite scheduling.
 - [ ] "Due today" overview across all decks (a home / dashboard view).
