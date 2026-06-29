@@ -4,6 +4,8 @@ An interactive flashcard **MCP App** for Claude Desktop. Claude generates flashc
 
 Built on the [MCP Apps extension](https://github.com/modelcontextprotocol/ext-apps) (SEP-1865): core MCP spec `2025-11-25` + Apps extension `2026-01-26`.
 
+![Memora flip-card review](media/flip-card.svg)
+
 ## What it does
 
 - **`review_deck`** — opens a deck as an inline flip-card UI: click to flip, grade **Got it** / **Missed it**, and a results screen at the end. Grades are sent back to the model via the host bridge.
