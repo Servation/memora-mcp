@@ -235,9 +235,17 @@ export function createServer(): McpServer {
       title: "Create Deck",
       description:
         "Create (or extend) a flashcard deck from cards you generate based on the user's " +
-        "request or the current conversation, then display it for review. Use atomic, " +
-        "single-concept cards with concise answers. The deck persists to data/decks.json " +
-        "and can be reopened later with review_deck.",
+        "request or the current conversation, then display it for review. The deck persists " +
+        "to data/decks.json and can be reopened later with review_deck.\n\n" +
+        "Follow Memora's card-quality rules (based on Wozniak's '20 Rules of Formulating " +
+        "Knowledge'). The front is the prompt/question, the back is the answer:\n" +
+        "1. Minimum information (atomic): each card tests exactly one fact or concept. Split " +
+        "complex material into several simple cards; never ask for lists or paragraph answers.\n" +
+        "2. Concise answers: the back is ideally 1-5 words (a name, date, term, or single " +
+        "concept), never a sentence or paragraph.\n" +
+        "3. Active recall: make the front a specific question (not 'Explain X'), or a cloze " +
+        "deletion with the hidden term in [brackets] on the front and that term as the back.\n" +
+        "4. Unambiguous: each front must point to exactly one correct answer.",
       inputSchema: {
         deck_name: z.string().describe("Name for the deck to create or add to."),
         cards: z

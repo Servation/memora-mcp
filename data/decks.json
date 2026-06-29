@@ -120,5 +120,39 @@
       "front": "I need a doctor.",
       "back": "Necesito un médico."
     }
+  ],
+  "Tech & AI Briefing — June 29, 2026": [
+    {
+      "front": "What three tiers make up OpenAI's GPT-5.6 series?",
+      "back": "Sol (flagship), Terra (balanced everyday), and Luna (fast/cheap)."
+    },
+    {
+      "front": "How is GPT-5.6 being released?",
+      "back": "As a limited preview requiring US government sign-off customer by customer — the same export-control regime applied to Anthropic's Fable and Mythos models."
+    },
+    {
+      "front": "What benchmark record did GPT-5.6 Sol Ultra set?",
+      "back": "91.9% on Terminal-Bench 2.1, up from GPT-5.5's 83.4% — its biggest architecture change since GPT-5."
+    },
+    {
+      "front": "What did the US government do regarding Claude Mythos 5 on June 29, 2026?",
+      "back": "Partially lifted its export ban, allowing access for critical-infrastructure defenders — signaling frontier models are now treated as export-controlled dual-use tech."
+    },
+    {
+      "front": "Why did Google restrict Meta's access to Gemini compute?",
+      "back": "Meta requested more capacity than Google could supply; the limits disrupted some of Meta's internal AI projects and forced it to optimize token usage — highlighting acute compute bottlenecks."
+    },
+    {
+      "front": "What ~$8 billion acquisition did Rocket Lab announce?",
+      "back": "It agreed to acquire satellite communications company Iridium in a cash-and-stock deal, expanding beyond launch into higher-margin satellite comms."
+    },
+    {
+      "front": "How did markets move on June 29, 2026?",
+      "back": "Nasdaq rebounded on mega-cap strength — Amazon +4%, Microsoft ~+2% — while Micron fell 6%, dragging chipmakers. SpaceX is set to join the Nasdaq-100."
+    },
+    {
+      "front": "What EU regulatory concern did Google raise?",
+      "back": "That proposed Digital Markets Act remedies forcing it to share more search and Android data with rivals could create privacy and cybersecurity risks."
+    }
   ]
 }
