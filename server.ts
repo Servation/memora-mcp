@@ -30,6 +30,7 @@ import {
   saveDecks,
   orderAndSlim,
   slimOf,
+  quizDeckNames,
   deckResult,
 } from "./decks.js";
 
@@ -46,6 +47,7 @@ const DECK_OUTPUT = {
   availableDecks: z.array(z.string()),
   dueCount: z.number(),
   newCount: z.number(),
+  quizDecks: z.array(z.string()).optional(),
 };
 
 /**
@@ -83,7 +85,7 @@ export function createServer(): McpServer {
       const name = deck_name && decks[deck_name] ? deck_name : names[0];
       const tagged: Tagged[] = decks[name].map((c) => ({ card: c, deck: name }));
       const { dueCount, newCount } = counts(decks[name]);
-      return deckResult(name, orderAndSlim(tagged), names, undefined, dueCount, newCount);
+      return deckResult(name, orderAndSlim(tagged), names, undefined, dueCount, newCount, quizDeckNames(decks));
     },
   );
 
@@ -123,7 +125,7 @@ export function createServer(): McpServer {
       const title = prefix
         ? `${prefix} (${matched.length} deck${matched.length > 1 ? "s" : ""})`
         : `All decks (${matched.length})`;
-      return deckResult(title, orderAndSlim(tagged), names, undefined, dueCount, newCount);
+      return deckResult(title, orderAndSlim(tagged), names, undefined, dueCount, newCount, quizDeckNames(decks));
     },
   );
 
@@ -183,7 +185,7 @@ export function createServer(): McpServer {
       const names = Object.keys(updated);
       const { dueCount, newCount } = counts(merged);
       const note = `Saved deck "${deck_name}" with ${merged.length} card(s).`;
-      return deckResult(deck_name, slimOf(merged, deck_name), names, note, dueCount, newCount);
+      return deckResult(deck_name, slimOf(merged, deck_name), names, note, dueCount, newCount, quizDeckNames(updated));
     },
   );
 
@@ -249,7 +251,7 @@ export function createServer(): McpServer {
       const names = Object.keys(updated);
       const { dueCount, newCount } = counts(merged);
       const note = `Saved quiz "${deck_name}" with ${merged.length} question(s).`;
-      return deckResult(deck_name, slimOf(merged, deck_name), names, note, dueCount, newCount);
+      return deckResult(deck_name, slimOf(merged, deck_name), names, note, dueCount, newCount, quizDeckNames(updated));
     },
   );
 
@@ -335,7 +337,7 @@ export function createServer(): McpServer {
 
       const names = Object.keys(decks);
       const { dueCount, newCount } = counts(newCards);
-      return deckResult(deck_name, slimOf(newCards, deck_name), names, `Updated a card in "${deck_name}".`, dueCount, newCount);
+      return deckResult(deck_name, slimOf(newCards, deck_name), names, `Updated a card in "${deck_name}".`, dueCount, newCount, quizDeckNames(decks));
     },
   );
 
@@ -374,7 +376,7 @@ export function createServer(): McpServer {
       const names = Object.keys(renamed);
       const cards = renamed[newName];
       const { dueCount, newCount } = counts(cards);
-      return deckResult(newName, slimOf(cards, newName), names, `Renamed "${deck_name}" to "${newName}".`, dueCount, newCount);
+      return deckResult(newName, slimOf(cards, newName), names, `Renamed "${deck_name}" to "${newName}".`, dueCount, newCount, quizDeckNames(renamed));
     },
   );
 
@@ -415,7 +417,7 @@ export function createServer(): McpServer {
 
       const names = Object.keys(decks);
       const { dueCount, newCount } = counts(newCards);
-      return deckResult(deck_name, slimOf(newCards, deck_name), names, `Deleted a card from "${deck_name}".`, dueCount, newCount);
+      return deckResult(deck_name, slimOf(newCards, deck_name), names, `Deleted a card from "${deck_name}".`, dueCount, newCount, quizDeckNames(decks));
     },
   );
 

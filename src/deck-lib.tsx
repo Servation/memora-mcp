@@ -13,11 +13,12 @@ export interface DeckData {
   deck: string;
   cards: Card[];
   availableDecks: string[];
+  quizDecks: string[]; // deck names that are multiple-choice quizzes (for the tree/map marker)
   dueCount: number;
   newCount: number;
 }
 
-export const EMPTY: DeckData = { deck: "", cards: [], availableDecks: [], dueCount: 0, newCount: 0 };
+export const EMPTY: DeckData = { deck: "", cards: [], availableDecks: [], quizDecks: [], dueCount: 0, newCount: 0 };
 
 /** Pull the session out of a tool result, with a text fallback. */
 export function extractDeck(result: CallToolResult): DeckData {
@@ -27,6 +28,7 @@ export function extractDeck(result: CallToolResult): DeckData {
         deck?: string;
         cards?: Card[];
         availableDecks?: string[];
+        quizDecks?: string[];
         dueCount?: number;
         newCount?: number;
       };
@@ -37,6 +39,7 @@ export function extractDeck(result: CallToolResult): DeckData {
       deck: sc.deck ?? "Deck",
       cards: sc.cards,
       availableDecks: sc.availableDecks ?? [],
+      quizDecks: sc.quizDecks ?? [],
       dueCount: sc.dueCount ?? 0,
       newCount: sc.newCount ?? 0,
     };
@@ -54,15 +57,15 @@ export function extractDeck(result: CallToolResult): DeckData {
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
-  return { deck, cards, availableDecks, dueCount: 0, newCount: 0 };
+  return { deck, cards, availableDecks, quizDecks: [], dueCount: 0, newCount: 0 };
 }
 
 // --- deck tree -----------------------------------------------------------
 
-export type TreeNode = { name: string; path: string; children: TreeNode[]; isDeck: boolean };
+export type TreeNode = { name: string; path: string; children: TreeNode[]; isDeck: boolean; isQuiz: boolean };
 
-/** Build a tree from "::"-separated deck names. */
-export function buildTree(names: string[]): TreeNode[] {
+/** Build a tree from "::"-separated deck names; mark deck nodes whose path is a quiz. */
+export function buildTree(names: string[], quizDecks: Set<string> = new Set()): TreeNode[] {
   const roots: TreeNode[] = [];
   for (const full of names) {
     const segs = full.split("::").map((s) => s.trim()).filter(Boolean);
@@ -72,10 +75,13 @@ export function buildTree(names: string[]): TreeNode[] {
       prefix = prefix ? prefix + "::" + seg : seg;
       let node = level.find((n) => n.name === seg);
       if (!node) {
-        node = { name: seg, path: prefix, children: [], isDeck: false };
+        node = { name: seg, path: prefix, children: [], isDeck: false, isQuiz: false };
         level.push(node);
       }
-      if (i === segs.length - 1) node.isDeck = true;
+      if (i === segs.length - 1) {
+        node.isDeck = true;
+        node.isQuiz = quizDecks.has(prefix);
+      }
       level = node.children;
     });
   }
@@ -116,6 +122,9 @@ export function TreeView({
               </button>
               <button className={styles.treeName} onClick={() => onPick(node)} disabled={busy}>
                 {node.name}
+                {node.isQuiz && (
+                  <span className={styles.quizBadge} title="Multiple-choice quiz">?</span>
+                )}
               </button>
             </div>
             {hasChildren && open && (
@@ -240,6 +249,7 @@ type MapNode = {
   name: string; // full name (for <title> / aria-label)
   text: string; // possibly-truncated label actually drawn
   isDeck: boolean; // reviewable deck -> filled pill + dot
+  isQuiz: boolean; // multiple-choice quiz deck -> "?" marker instead of the dot
   synthetic: boolean; // the injected "Decks" hub (not clickable)
   ref: TreeNode | null; // original node for onPick (null for the hub)
   depth: number;
@@ -277,7 +287,7 @@ function layoutMindMap(roots: TreeNode[]): MapLayout {
   }
 
   const multi = roots.length > 1;
-  const hub: TreeNode = { name: "Decks", path: SYN_ROOT, children: roots, isDeck: false };
+  const hub: TreeNode = { name: "Decks", path: SYN_ROOT, children: roots, isDeck: false, isQuiz: false };
   const tops: TreeNode[] = multi ? [hub] : roots;
 
   type I = { node: TreeNode; syn: boolean; depth: number; w: number; text: string; children: I[]; y: number };
@@ -329,6 +339,7 @@ function layoutMindMap(roots: TreeNode[]): MapLayout {
       name: n.node.name,
       text: n.text,
       isDeck: n.node.isDeck,
+      isQuiz: n.node.isQuiz,
       synthetic: n.syn,
       ref: n.syn ? null : n.node,
       depth: n.depth,
@@ -425,7 +436,9 @@ export function MindMap({
               transform={`translate(${n.x}, ${n.y - h / 2})`}
               role={n.synthetic ? "img" : "button"}
               aria-label={
-                n.synthetic ? "Decks" : `${n.name}, ${n.isDeck ? "deck" : "category"}, level ${n.depth + 1}`
+                n.synthetic
+                  ? "Decks"
+                  : `${n.name}, ${n.isQuiz ? "quiz" : n.isDeck ? "deck" : "category"}, level ${n.depth + 1}`
               }
               aria-disabled={n.synthetic ? undefined : busy || undefined}
               tabIndex={clickable ? 0 : -1}
@@ -434,7 +447,21 @@ export function MindMap({
             >
               {!n.synthetic && <title>{n.name}</title>}
               <rect className={styles.mapPill} x={0} y={0} rx={h / 2} ry={h / 2} width={n.w} height={h} />
-              {isDeckNode && <circle className={styles.mapDot} cx={14 + dotR} cy={h / 2} r={dotR} aria-hidden="true" />}
+              {isDeckNode &&
+                (n.isQuiz ? (
+                  <text
+                    className={styles.mapQuiz}
+                    x={14 + dotR}
+                    y={h / 2}
+                    textAnchor="middle"
+                    dominantBaseline="central"
+                    aria-hidden="true"
+                  >
+                    ?
+                  </text>
+                ) : (
+                  <circle className={styles.mapDot} cx={14 + dotR} cy={h / 2} r={dotR} aria-hidden="true" />
+                ))}
               <text
                 className={styles.mapLabel}
                 x={textX}

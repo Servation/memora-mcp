@@ -451,6 +451,23 @@
   text-decoration: underline;
 }
 
+/* "quiz" marker shown after a multiple-choice deck name in the tree */
+.quizBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  margin-left: 6px;
+  border-radius: 999px;
+  background-color: var(--color-accent);
+  color: var(--color-text-on-accent);
+  font-size: 10px;
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+  vertical-align: middle;
+}
+
 .treeBtn {
   background: transparent;
   border: var(--border-width-regular) solid
@@ -566,6 +583,15 @@
 
 .mapDot {
   fill: var(--color-accent);
+}
+
+/* quiz decks show a "?" glyph in place of the dot */
+.mapQuiz {
+  fill: var(--color-accent);
+  font-family: inherit;
+  font-size: var(--font-heading-sm-size);
+  font-weight: var(--font-weight-bold);
+  pointer-events: none;
 }
 
 /* pure category => outlined (background) pill */

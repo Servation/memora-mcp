@@ -132,6 +132,11 @@ export function slimOf(cards: Card[], deck: string): SlimCard[] {
   return cards.map((c) => ({ front: c.front, back: c.back, deck, ...(c.options ? { options: c.options } : {}) }));
 }
 
+/** Names of decks that are multiple-choice quizzes (every card carries options). */
+export function quizDeckNames(decks: DeckMap): string[] {
+  return Object.keys(decks).filter((n) => decks[n].length > 0 && decks[n].every((c) => !!c.options?.length));
+}
+
 /** Build the tool result that renders a (possibly multi-deck) session in the flip-card UI. */
 export function deckResult(
   title: string,
@@ -140,6 +145,7 @@ export function deckResult(
   note: string | undefined,
   dueCount: number,
   newCount: number,
+  quizDecks: string[] = [],
 ): CallToolResult {
   const text =
     (note ? note + "\n\n" : "") +
@@ -148,6 +154,6 @@ export function deckResult(
     `\n\nAvailable decks: ${names.join(", ")}`;
   return {
     content: [{ type: "text", text }],
-    structuredContent: { deck: title, count: slim.length, cards: slim, availableDecks: names, dueCount, newCount },
+    structuredContent: { deck: title, count: slim.length, cards: slim, availableDecks: names, dueCount, newCount, quizDecks },
   };
 }

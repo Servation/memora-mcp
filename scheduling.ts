@@ -63,7 +63,14 @@ export function schedule(card: Card, correct: boolean): Card {
     state: next.state,
     last_review: next.last_review ? next.last_review.toISOString() : now.toISOString(),
   };
-  return { front: card.front, back: card.back, due: next.due.toISOString().slice(0, 10), srs };
+  // Preserve options so grading a quiz card keeps it a quiz (not a flashcard).
+  return {
+    front: card.front,
+    back: card.back,
+    ...(card.options ? { options: card.options } : {}),
+    due: next.due.toISOString().slice(0, 10),
+    srs,
+  };
 }
 
 /** Due/new counts for a set of cards. */

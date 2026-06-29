@@ -65,7 +65,7 @@ function Deck({
   hostContext?: McpUiHostContext;
 }) {
   const meta = useMemo(() => (result ? extractDeck(result) : EMPTY), [result]);
-  const { deck, availableDecks, dueCount, newCount } = meta;
+  const { deck, availableDecks, quizDecks, dueCount, newCount } = meta;
 
   const [cards, setCards] = useState<Card[]>(meta.cards);
   const [index, setIndex] = useState(0);
@@ -100,7 +100,8 @@ function Deck({
     paddingLeft: hostContext?.safeAreaInsets?.left,
   };
 
-  const tree = useMemo(() => buildTree(availableDecks), [availableDecks]);
+  const quizSet = useMemo(() => new Set(quizDecks), [quizDecks]);
+  const tree = useMemo(() => buildTree(availableDecks, quizSet), [availableDecks, quizSet]);
 
   const callAndShow = async (name: string, args: Record<string, unknown>) => {
     setBusy(true);
