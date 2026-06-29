@@ -21,19 +21,13 @@ Built on the [MCP Apps extension](https://github.com/modelcontextprotocol/ext-ap
 - **Deck picker**: switch between your decks from buttons in the UI, no retyping in chat.
 - Decks are plain JSON read **live** on every call, so you can hand-edit them or let Claude create them. No database, no external service.
 
+![Claude builds a deck from the conversation](media/create-deck.svg)
+
 ## How it works (MCP Apps)
 
 A tool declares a `ui://` resource. When Claude calls the tool, the host (Claude Desktop) fetches that resource and renders its HTML in a **sandboxed iframe**, passes the tool result to the UI, and the UI talks back to the host over JSON-RPC.
 
-```
-Claude calls review_deck
-        |
-        v
-Host renders ui://memora/review-deck.html  (sandboxed iframe)
-        |  tool result (deck + cards)
-        v
-Flip-card UI  --grade-->  grade_card (persist schedule) + updateModelContext / sendMessage  -->  model reacts
-```
+![Architecture: the MCP Apps round trip](media/architecture.svg)
 
 ## Tech stack
 

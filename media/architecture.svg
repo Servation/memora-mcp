@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 340" font-family="-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#94a3b8"/>
+    </marker>
+  </defs>
+
+  <rect x="10" y="10" width="840" height="320" rx="18" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1.5"/>
+  <text x="430" y="50" text-anchor="middle" font-size="20" font-weight="700" fill="#0f172a">How it works (MCP Apps round trip)</text>
+
+  <!-- boxes -->
+  <rect x="45" y="120" width="210" height="90" rx="12" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5"/>
+  <text x="150" y="158" text-anchor="middle" font-size="16" font-weight="700" fill="#0f172a">Claude Desktop</text>
+  <text x="150" y="180" text-anchor="middle" font-size="12" fill="#64748b">model + host</text>
+
+  <rect x="325" y="120" width="210" height="90" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+  <text x="430" y="153" text-anchor="middle" font-size="16" font-weight="700" fill="#0f172a">Memora MCP server</text>
+  <text x="430" y="174" text-anchor="middle" font-size="11" fill="#64748b">review_deck &#183; create_deck</text>
+  <text x="430" y="190" text-anchor="middle" font-size="11" fill="#64748b">grade_card</text>
+
+  <rect x="605" y="120" width="210" height="90" rx="12" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.5"/>
+  <text x="710" y="153" text-anchor="middle" font-size="16" font-weight="700" fill="#0f172a">Flip-card UI</text>
+  <text x="710" y="174" text-anchor="middle" font-size="12" fill="#64748b">sandboxed iframe</text>
+
+  <!-- A -> B (tool call) -->
+  <line x1="255" y1="150" x2="320" y2="150" stroke="#94a3b8" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <text x="287" y="140" text-anchor="middle" font-size="11" fill="#475569">tool call</text>
+
+  <!-- B -> C (render ui resource) -->
+  <line x1="535" y1="150" x2="600" y2="150" stroke="#94a3b8" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <text x="567" y="140" text-anchor="middle" font-size="11" fill="#475569">ui:// resource</text>
+
+  <!-- C -> A return (grade -> model), curved underneath -->
+  <path d="M710 215 C 710 285, 150 285, 150 215" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-dasharray="6 4" marker-end="url(#arrow)"/>
+  <text x="430" y="300" text-anchor="middle" font-size="12" fill="#16a34a">grade &#8594; updateModelContext / sendMessage</text>
+</svg>
