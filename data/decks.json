@@ -26,75 +26,147 @@
     },
     {
       "front": "In attention, what does the KEY represent?",
-      "back": "What a word advertises about itself"
+      "back": "What a word advertises about itself",
+      "due": "2026-06-30",
+      "interval": 1,
+      "ease": 2.3,
+      "reps": 0
     },
     {
       "front": "In attention, what does the VALUE represent?",
-      "back": "The information a word hands over if attended to"
+      "back": "The information a word hands over if attended to",
+      "due": "2026-06-30",
+      "interval": 1,
+      "ease": 2.3,
+      "reps": 0
     },
     {
       "front": "In one phrase, what does attention do?",
-      "back": "Every word checks every other word for relevance"
+      "back": "Every word checks every other word for relevance",
+      "due": "2026-06-30",
+      "interval": 1,
+      "ease": 2.3,
+      "reps": 0
     },
     {
       "front": "Running several attention passes in parallel is called?",
-      "back": "Multi-head attention"
+      "back": "Multi-head attention",
+      "due": "2026-06-30",
+      "interval": 1,
+      "ease": 2.3,
+      "reps": 0
     },
     {
       "front": "Why are context windows expensive/limited?",
-      "back": "Work grows with the square of the sequence length"
+      "back": "Work grows with the square of the sequence length",
+      "due": "2026-06-30",
+      "interval": 1,
+      "ease": 2.3,
+      "reps": 0
     },
     {
       "front": "A decoder-only transformer generates text how?",
-      "back": "One token at a time"
+      "back": "One token at a time",
+      "due": "2026-06-30",
+      "interval": 1,
+      "ease": 2.3,
+      "reps": 0
     },
     {
       "front": "Training stage 1: learning patterns from huge text is called?",
-      "back": "Pretraining"
+      "back": "Pretraining",
+      "due": "2026-06-30",
+      "interval": 1,
+      "ease": 2.3,
+      "reps": 0
     },
     {
       "front": "What game does a model play during pretraining?",
-      "back": "Predict the next token"
+      "back": "Predict the next token",
+      "due": "2026-06-30",
+      "interval": 1,
+      "ease": 2.3,
+      "reps": 0
     },
     {
       "front": "Training stage that teaches instruction-following?",
-      "back": "Supervised fine-tuning (SFT)"
+      "back": "Supervised fine-tuning (SFT)",
+      "due": "2026-06-30",
+      "interval": 1,
+      "ease": 2.3,
+      "reps": 0
     },
     {
       "front": "Training stage that aligns to human preferences?",
-      "back": "RLHF (or DPO)"
+      "back": "RLHF (or DPO)",
+      "due": "2026-06-30",
+      "interval": 1,
+      "ease": 2.3,
+      "reps": 0
     },
     {
       "front": "What does 'inference' mean?",
-      "back": "Running the finished (frozen) model to generate text"
+      "back": "Running the finished (frozen) model to generate text",
+      "due": "2026-06-30",
+      "interval": 1,
+      "ease": 2.3,
+      "reps": 0
     },
     {
       "front": "Inference phase that processes the whole prompt at once?",
-      "back": "Prefill"
+      "back": "Prefill",
+      "due": "2026-06-30",
+      "interval": 1,
+      "ease": 2.3,
+      "reps": 0
     },
     {
       "front": "Inference phase that writes output one token at a time?",
-      "back": "Decode"
+      "back": "Decode",
+      "due": "2026-06-30",
+      "interval": 1,
+      "ease": 2.3,
+      "reps": 0
     },
     {
       "front": "What is quantization?",
-      "back": "Storing weights in fewer bits to shrink the model"
+      "back": "Storing weights in fewer bits to shrink the model",
+      "due": "2026-06-30",
+      "interval": 1,
+      "ease": 2.3,
+      "reps": 0
     },
     {
       "front": "Quantization's main tradeoff?",
-      "back": "Smaller/faster vs slight quality loss"
+      "back": "Smaller/faster vs slight quality loss",
+      "due": "2026-06-30",
+      "interval": 1,
+      "ease": 2.3,
+      "reps": 0
     },
     {
       "front": "GGUF is a [what]?",
-      "back": "File format for quantized models"
+      "back": "File format for quantized models",
+      "due": "2026-06-30",
+      "interval": 1,
+      "ease": 2.3,
+      "reps": 0
     },
     {
       "front": "What does the KV cache store?",
-      "back": "Keys and Values of previous tokens during decode"
+      "back": "Keys and Values of previous tokens during decode",
+      "due": "2026-06-30",
+      "interval": 1,
+      "ease": 2.3,
+      "reps": 0
     },
     {
       "front": "Why does long context get heavy at runtime?",
-      "back": "The KV cache grows with length and becomes the bottleneck"
+      "back": "The KV cache grows with length and becomes the bottleneck",
+      "ease": 2.3,
+      "reps": 0,
+      "interval": 1,
+      "due": "2026-06-30"
     },
     {
       "front": "Batching improves what?",

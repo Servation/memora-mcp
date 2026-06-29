@@ -1,10 +1,10 @@
 /**
  * @file Memora flip-card MCP App UI.
  *
- * Flip a card, grade it Right/Wrong (persists a spaced-repetition schedule via
- * grade_card and updates model context). Finishing the deck sends a summary so
- * Claude reacts. A deck-picker switches decks. Each card can be edited inline,
- * persisting via edit_card while staying on the same card.
+ * Review mode: flip a card, grade it (persists a spaced-repetition schedule via
+ * grade_card, updates model context); finishing sends a summary so Claude reacts.
+ * Browse mode: a scrollable list of all cards; click to jump, delete inline.
+ * Cards can be edited/deleted inline; a dropdown switches decks.
  */
 import type { App, McpUiHostContext } from "@modelcontextprotocol/ext-apps";
 import { useApp } from "@modelcontextprotocol/ext-apps/react";
@@ -27,10 +27,7 @@ interface DeckData {
 
 const EMPTY: DeckData = { deck: "", cards: [], availableDecks: [], dueCount: 0, newCount: 0 };
 
-/**
- * Pull the deck out of a tool result: prefer structuredContent, fall back to
- * parsing the text so the UI works even if a host does not forward it.
- */
+/** Pull the deck out of a tool result, with a text fallback. */
 function extractDeck(result: CallToolResult): DeckData {
   const sc = (
     result as {
@@ -118,8 +115,10 @@ function Deck({
   const [editFront, setEditFront] = useState("");
   const [editBack, setEditBack] = useState("");
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [view, setView] = useState<"review" | "list">("review");
+  const [confirmRow, setConfirmRow] = useState<number | null>(null);
 
-  // Reset to a fresh review whenever a new deck arrives.
+  // Reset whenever a new deck arrives.
   useEffect(() => {
     setCards(meta.cards);
     setIndex(0);
@@ -128,6 +127,8 @@ function Deck({
     setDone(false);
     setEditing(false);
     setConfirmingDelete(false);
+    setView("review");
+    setConfirmRow(null);
   }, [result]);
 
   const pad = {
@@ -207,6 +208,17 @@ function Deck({
     setConfirmingDelete(false);
   };
 
+  /** Remove the card at i locally (stay in place) and persist via delete_card. */
+  const removeCardAt = (i: number) => {
+    if (cards.length <= 1) return;
+    const f = cards[i].front;
+    setCards((cs) => cs.filter((_, j) => j !== i));
+    setGrades((gs) => gs.filter((_, j) => j !== i));
+    setIndex((idx) => Math.min(idx, cards.length - 2));
+    setFlipped(false);
+    app.callServerTool({ name: "delete_card", arguments: { deck_name: deck, front: f } }).catch(() => {});
+  };
+
   const grade = (correct: boolean) => {
     const card = cards[index];
 
@@ -216,12 +228,9 @@ function Deck({
     setGrades(next);
     setFlipped(false);
 
-    // Persist the spaced-repetition schedule for this card.
     app
       .callServerTool({ name: "grade_card", arguments: { deck_name: deck, front: card.front, correct } })
       .catch(() => {});
-
-    // Keep the model aware of live progress.
     app.updateModelContext({ content: [{ type: "text", text: contextMarkdown(next) }] }).catch(() => {});
 
     const gradedCount = next.filter((g) => g !== undefined).length;
@@ -248,20 +257,6 @@ function Deck({
 
   const cancelEdit = () => setEditing(false);
 
-  const doDelete = async () => {
-    const f = cards[index].front;
-    setConfirmingDelete(false);
-    setBusy(true);
-    try {
-      const r = await app.callServerTool({ name: "delete_card", arguments: { deck_name: deck, front: f } });
-      setResult(r as CallToolResult);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setBusy(false);
-    }
-  };
-
   const saveEdit = () => {
     const nf = editFront.trim();
     const nb = editBack.trim();
@@ -271,7 +266,6 @@ function Deck({
     newCards[index] = { front: nf, back: nb };
     setCards(newCards);
     setEditing(false);
-    // Persist; stay on the same card (do not re-render from the tool result).
     app
       .callServerTool({
         name: "edit_card",
@@ -279,6 +273,60 @@ function Deck({
       })
       .catch(() => {});
   };
+
+  // --- Browse / list view ---
+  if (view === "list") {
+    return (
+      <main className={styles.main} style={pad}>
+        <h3 className={styles.deckTitle}>{deck}</h3>
+        <p className={styles.counter}>{cards.length} cards</p>
+        <ul className={styles.cardList}>
+          {cards.map((c, i) => (
+            <li key={i} className={styles.cardRow}>
+              <button
+                className={styles.cardRowMain}
+                onClick={() => {
+                  setIndex(i);
+                  setFlipped(false);
+                  setView("review");
+                }}
+              >
+                <span className={styles.cardRowFront}>{c.front}</span>
+                <span className={styles.cardRowBack}>{c.back}</span>
+              </button>
+              {cards.length > 1 &&
+                (confirmRow === i ? (
+                  <span className={styles.rowConfirm}>
+                    <button className={styles.rowCancel} onClick={() => setConfirmRow(null)}>Cancel</button>
+                    <button
+                      className={styles.rowDelete}
+                      onClick={() => {
+                        removeCardAt(i);
+                        setConfirmRow(null);
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </span>
+                ) : (
+                  <button
+                    className={styles.rowDeleteIcon}
+                    onClick={() => setConfirmRow(i)}
+                    aria-label="Delete card"
+                  >
+                    &times;
+                  </button>
+                ))}
+            </li>
+          ))}
+        </ul>
+        <div className={styles.controls}>
+          <button className={styles.accentBtn} onClick={() => setView("review")}>Back to review</button>
+        </div>
+        {deckSwitcher}
+      </main>
+    );
+  }
 
   if (done) {
     const correct = grades.filter((g) => g === true).length;
@@ -322,7 +370,13 @@ function Deck({
         >
           &#8249;
         </button>
-        <span className={styles.counter}>Card {index + 1} of {cards.length}</span>
+        <button
+          className={styles.counterButton}
+          onClick={() => setView("list")}
+          title="Browse all cards"
+        >
+          Card {index + 1} of {cards.length}
+        </button>
         <button
           className={styles.navArrow}
           onClick={() => goTo(index + 1)}
@@ -402,7 +456,15 @@ function Deck({
           {confirmingDelete ? (
             <div className={styles.editActions}>
               <button className={styles.cancelBtn} onClick={() => setConfirmingDelete(false)}>Cancel</button>
-              <button className={styles.dangerBtn} onClick={doDelete} disabled={busy}>Delete card</button>
+              <button
+                className={styles.dangerBtn}
+                onClick={() => {
+                  removeCardAt(index);
+                  setConfirmingDelete(false);
+                }}
+              >
+                Delete card
+              </button>
             </div>
           ) : (
             <div className={styles.cardActions}>
