@@ -147,3 +147,43 @@
 .gradeWrong:hover {
   background-color: #b91c1c;
 }
+
+.schedInfo {
+  margin: 0;
+  font-size: var(--font-heading-sm-size);
+  color: var(--color-text-info);
+}
+
+/* Deck picker */
+.deckBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+  justify-content: center;
+  width: 100%;
+  margin-top: var(--spacing-xs);
+}
+
+.deckPill {
+  padding: 4px 12px;
+  border: var(--border-width-regular) solid
+    color-mix(in srgb, var(--color-text-primary) 22%, transparent);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-text-primary);
+  font-size: var(--font-heading-sm-size);
+  cursor: pointer;
+}
+
+.deckPill:hover:not(:disabled) {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.deckPillActive,
+.deckPillActive:hover {
+  background-color: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-text-on-accent);
+  cursor: default;
+}

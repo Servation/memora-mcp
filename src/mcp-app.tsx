@@ -1,10 +1,11 @@
 /**
  * @file Memora flip-card MCP App UI.
  *
- * Flip a card, grade it Right/Wrong, and the grade flows back to the model. Each
- * grade calls `updateModelContext` (silent live state, so the model knows what
- * you are doing in the UI); finishing the deck calls `sendMessage` with a summary
- * so Claude reacts in the conversation (e.g. offers to drill the missed cards).
+ * Flip a card, grade it Right/Wrong. Each grade:
+ *  - calls `grade_card` to persist a spaced-repetition schedule (server side),
+ *  - calls `updateModelContext` so the model knows live progress.
+ * Finishing the deck calls `sendMessage` so Claude reacts to the score.
+ * A deck-picker switches decks via `review_deck` without leaving the UI.
  */
 import type { App, McpUiHostContext } from "@modelcontextprotocol/ext-apps";
 import { useApp } from "@modelcontextprotocol/ext-apps/react";
@@ -17,15 +18,41 @@ type Card = { front: string; back: string };
 /** true = correct, false = missed, undefined = not graded yet. */
 type Grade = boolean | undefined;
 
+interface DeckData {
+  deck: string;
+  cards: Card[];
+  availableDecks: string[];
+  dueCount: number;
+  newCount: number;
+}
+
+const EMPTY: DeckData = { deck: "", cards: [], availableDecks: [], dueCount: 0, newCount: 0 };
+
 /**
  * Pull the deck out of a review_deck/create_deck result: prefer structuredContent,
- * fall back to parsing the "N. front  ->  back" text so the UI works even if a
- * host does not forward structuredContent.
+ * fall back to parsing the text so the UI works even if a host does not forward it.
  */
-function extractDeck(result: CallToolResult): { deck: string; cards: Card[] } {
-  const sc = (result as { structuredContent?: { deck?: string; cards?: Card[] } })
-    .structuredContent;
-  if (sc?.cards?.length) return { deck: sc.deck ?? "Deck", cards: sc.cards };
+function extractDeck(result: CallToolResult): DeckData {
+  const sc = (
+    result as {
+      structuredContent?: {
+        deck?: string;
+        cards?: Card[];
+        availableDecks?: string[];
+        dueCount?: number;
+        newCount?: number;
+      };
+    }
+  ).structuredContent;
+  if (sc?.cards?.length) {
+    return {
+      deck: sc.deck ?? "Deck",
+      cards: sc.cards,
+      availableDecks: sc.availableDecks ?? [],
+      dueCount: sc.dueCount ?? 0,
+      newCount: sc.newCount ?? 0,
+    };
+  }
 
   const text =
     (result.content?.find((c) => c.type === "text") as { text?: string } | undefined)?.text ?? "";
@@ -35,7 +62,11 @@ function extractDeck(result: CallToolResult): { deck: string; cards: Card[] } {
     if (m) cards.push({ front: m[1], back: m[2] });
   }
   const deck = text.match(/^Deck:\s*(.+?)\s*\(/m)?.[1] ?? "Deck";
-  return { deck, cards };
+  const availableDecks = (text.match(/^Available decks:\s*(.+)$/m)?.[1] ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return { deck, cards, availableDecks, dueCount: 0, newCount: 0 };
 }
 
 function MemoraApp() {
@@ -61,21 +92,22 @@ function MemoraApp() {
   if (error) return <div><strong>ERROR:</strong> {error.message}</div>;
   if (!app) return <div>Connecting...</div>;
 
-  return <Deck app={app} result={result} hostContext={hostContext} />;
+  return <Deck app={app} result={result} setResult={setResult} hostContext={hostContext} />;
 }
 
 function Deck({
   app,
   result,
+  setResult,
   hostContext,
 }: {
   app: App;
   result: CallToolResult | null;
+  setResult: (r: CallToolResult) => void;
   hostContext?: McpUiHostContext;
 }) {
-  // Parse the deck once per tool result, not on every flip/advance re-render.
-  const { deck, cards } = useMemo(
-    () => (result ? extractDeck(result) : { deck: "", cards: [] }),
+  const { deck, cards, availableDecks, dueCount, newCount } = useMemo(
+    () => (result ? extractDeck(result) : EMPTY),
     [result],
   );
 
@@ -83,6 +115,7 @@ function Deck({
   const [flipped, setFlipped] = useState(false);
   const [grades, setGrades] = useState<Grade[]>([]);
   const [done, setDone] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   // Reset to a fresh review whenever a new deck arrives.
   useEffect(() => {
@@ -99,12 +132,42 @@ function Deck({
     paddingLeft: hostContext?.safeAreaInsets?.left,
   };
 
+  const switchDeck = async (name: string) => {
+    if (name === deck || busy) return;
+    setBusy(true);
+    try {
+      const r = await app.callServerTool({ name: "review_deck", arguments: { deck_name: name } });
+      setResult(r as CallToolResult);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const deckBar =
+    availableDecks.length > 1 ? (
+      <div className={styles.deckBar}>
+        {availableDecks.map((d) => (
+          <button
+            key={d}
+            className={`${styles.deckPill} ${d === deck ? styles.deckPillActive : ""}`}
+            onClick={() => switchDeck(d)}
+            disabled={d === deck || busy}
+          >
+            {d}
+          </button>
+        ))}
+      </div>
+    ) : null;
+
   if (cards.length === 0) {
     return (
       <main className={styles.main} style={pad}>
         <p className={styles.hint}>
           Waiting for a deck. Ask Claude to call <code>review_deck</code>.
         </p>
+        {deckBar}
       </main>
     );
   }
@@ -130,13 +193,20 @@ function Deck({
   };
 
   const grade = (correct: boolean) => {
+    const card = cards[index];
+
     const base = grades.length === cards.length ? grades : cards.map(() => undefined);
     const next = base.slice();
     next[index] = correct;
     setGrades(next);
     setFlipped(false);
 
-    // Silent: keep the model aware of what the user is doing in the UI.
+    // Persist the spaced-repetition schedule for this card (server side).
+    app
+      .callServerTool({ name: "grade_card", arguments: { deck_name: deck, front: card.front, correct } })
+      .catch(() => {});
+
+    // Keep the model aware of live progress (silent).
     app.updateModelContext({ content: [{ type: "text", text: contextMarkdown(next) }] }).catch(() => {});
 
     const gradedCount = next.filter((g) => g !== undefined).length;
@@ -147,7 +217,6 @@ function Deck({
       const summary = missed.length
         ? `I finished reviewing my "${deck}" deck: ${correctCount} of ${cards.length} correct. I missed: ${missed.join(", ")}. Can you help me drill the ones I missed?`
         : `I finished reviewing my "${deck}" deck with a perfect score: ${correctCount} of ${cards.length}.`;
-      // Visible: prompt Claude to react to the results in the conversation.
       app.sendMessage({ role: "user", content: [{ type: "text", text: summary }] }).catch(() => {});
     } else {
       setIndex((i) => Math.min(cards.length - 1, i + 1));
@@ -173,10 +242,11 @@ function Deck({
         ) : (
           <p className={styles.hint}>Perfect score.</p>
         )}
-        <p className={styles.shared}>Results shared with Claude.</p>
+        <p className={styles.shared}>Results shared with Claude. Schedules updated.</p>
         <div className={styles.controls}>
           <button className={styles.accentBtn} onClick={reset}>Review again</button>
         </div>
+        {deckBar}
       </main>
     );
   }
@@ -187,6 +257,9 @@ function Deck({
     <main className={styles.main} style={pad}>
       <h3 className={styles.deckTitle}>{deck}</h3>
       <p className={styles.counter}>Card {index + 1} of {cards.length}</p>
+      {(dueCount > 0 || newCount > 0) && (
+        <p className={styles.schedInfo}>{dueCount} due · {newCount} new</p>
+      )}
 
       <div
         className={styles.scene}
@@ -221,6 +294,8 @@ function Deck({
       ) : (
         <p className={styles.hint}>Click the card to reveal the answer</p>
       )}
+
+      {deckBar}
     </main>
   );
 }
