@@ -80,6 +80,16 @@ function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+/** Fisher-Yates shuffle (returns a new array). */
+function shuffle<T>(arr: T[]): T[] {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 // Day-scale scheduling for a once-a-day study loop: no short same-day learning steps.
 const scheduler = fsrs(
   generatorParameters({ enable_fuzz: false, learning_steps: [], relearning_steps: [] }),
@@ -242,12 +252,17 @@ export function createServer(): McpServer {
       const today = todayISO();
       const dueCount = all.filter((c) => c.due && c.due <= today).length;
       const newCount = all.filter((c) => !c.due).length;
-      // Due / overdue / new first (new cards have no due date, sorted as "today").
-      const ordered = [...all].sort((a, b) => {
-        const ad = a.due ?? today;
-        const bd = b.due ?? today;
-        return ad < bd ? -1 : ad > bd ? 1 : 0;
-      });
+      // Due/overdue/new first, but shuffle within each due-date tier so the
+      // sequence varies and you learn the cards, not their positions.
+      const tiers = new Map<string, Card[]>();
+      for (const c of all) {
+        const key = c.due ?? today;
+        const tier = tiers.get(key);
+        if (tier) tier.push(c);
+        else tiers.set(key, [c]);
+      }
+      const ordered: Card[] = [];
+      for (const key of [...tiers.keys()].sort()) ordered.push(...shuffle(tiers.get(key)!));
       return deckResult(name, ordered, names, undefined, dueCount, newCount);
     },
   );
