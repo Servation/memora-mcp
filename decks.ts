@@ -23,14 +23,15 @@ export type FsrsState = {
 };
 
 export type Card = {
-  front: string;
-  back: string;
+  front: string; // flashcard front, or quiz question
+  back: string; // flashcard back, or the correct answer (one of options)
+  options?: string[]; // present = a multiple-choice question
   due?: string; // YYYY-MM-DD next-due date (derived from FSRS), for ordering + due_today
   srs?: FsrsState; // FSRS scheduling state (absent = never reviewed)
 };
 export type DeckMap = Record<string, Card[]>;
 /** A card slimmed for the UI, tagged with its source deck (for grade/edit/delete routing). */
-export type SlimCard = { front: string; back: string; deck: string };
+export type SlimCard = { front: string; back: string; deck: string; options?: string[] };
 /** A card paired with its source deck, for assembling (possibly multi-deck) sessions. */
 export type Tagged = { card: Card; deck: string };
 
@@ -56,6 +57,9 @@ function toCard(c: unknown): Card | null {
   if (typeof o.due === "string") card.due = o.due;
   if (o.srs && typeof o.srs === "object" && typeof (o.srs as { stability?: unknown }).stability === "number") {
     card.srs = o.srs as FsrsState;
+  }
+  if (Array.isArray(o.options) && o.options.length > 0 && o.options.every((x) => typeof x === "string")) {
+    card.options = o.options as string[];
   }
   return card;
 }
@@ -115,12 +119,17 @@ export function orderAndSlim(tagged: Tagged[]): SlimCard[] {
   }
   const ordered: Tagged[] = [];
   for (const key of [...tiers.keys()].sort()) ordered.push(...shuffle(tiers.get(key)!));
-  return ordered.map((t) => ({ front: t.card.front, back: t.card.back, deck: t.deck }));
+  return ordered.map((t) => ({
+    front: t.card.front,
+    back: t.card.back,
+    deck: t.deck,
+    ...(t.card.options ? { options: t.card.options } : {}),
+  }));
 }
 
 /** Slim a single deck's cards (all from one deck), keeping order. */
 export function slimOf(cards: Card[], deck: string): SlimCard[] {
-  return cards.map((c) => ({ front: c.front, back: c.back, deck }));
+  return cards.map((c) => ({ front: c.front, back: c.back, deck, ...(c.options ? { options: c.options } : {}) }));
 }
 
 /** Build the tool result that renders a (possibly multi-deck) session in the flip-card UI. */

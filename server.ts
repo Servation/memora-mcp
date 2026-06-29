@@ -42,7 +42,7 @@ const PATH_SEP = "::";
 const DECK_OUTPUT = {
   deck: z.string(),
   count: z.number(),
-  cards: z.array(z.object({ front: z.string(), back: z.string(), deck: z.string() })),
+  cards: z.array(z.object({ front: z.string(), back: z.string(), deck: z.string(), options: z.array(z.string()).optional() })),
   availableDecks: z.array(z.string()),
   dueCount: z.number(),
   newCount: z.number(),
@@ -183,6 +183,72 @@ export function createServer(): McpServer {
       const names = Object.keys(updated);
       const { dueCount, newCount } = counts(merged);
       const note = `Saved deck "${deck_name}" with ${merged.length} card(s).`;
+      return deckResult(deck_name, slimOf(merged, deck_name), names, note, dueCount, newCount);
+    },
+  );
+
+  // create_quiz: Claude generates multiple-choice questions; persist + render.
+  registerAppTool(
+    server,
+    "create_quiz",
+    {
+      title: "Create Quiz",
+      description:
+        "Create (or extend) a multiple-choice quiz deck from questions you generate based on " +
+        "the user's request or the conversation, then display it for review. Use \"::\" in " +
+        "deck_name to nest under a category. Persists to data/decks.json and is reviewed like " +
+        "flashcards with spaced repetition.\n\n" +
+        "Each question: a clear, specific prompt; 3 to 4 concise options with exactly ONE " +
+        "correct answer and plausible (not obviously wrong) distractors. The answer must match " +
+        "one of the options exactly.",
+      inputSchema: {
+        deck_name: z.string().describe("Name for the quiz deck to create or add to (\"::\" nests it)."),
+        questions: z
+          .array(
+            z.object({
+              question: z.string(),
+              options: z.array(z.string()).min(2),
+              answer: z.string().describe("The correct option (must match one of options exactly)."),
+            }),
+          )
+          .describe("Multiple-choice questions you generate."),
+        append: z.boolean().optional().describe("If true and the deck exists, append; otherwise replace/create."),
+      },
+      outputSchema: DECK_OUTPUT,
+      _meta: { ui: { resourceUri: RESOURCE_URI } },
+    },
+    async ({ deck_name, questions, append }): Promise<CallToolResult> => {
+      const clean: Card[] = (questions ?? [])
+        .map((q) => ({
+          question: typeof q.question === "string" ? q.question.trim() : "",
+          options: (q.options ?? []).map((o) => (typeof o === "string" ? o.trim() : "")).filter(Boolean),
+          answer: typeof q.answer === "string" ? q.answer.trim() : "",
+        }))
+        .filter((q) => q.question && q.answer && q.options.length >= 2 && q.options.includes(q.answer))
+        .map((q) => ({ front: q.question, back: q.answer, options: q.options }))
+        .slice(0, MAX_CARDS);
+
+      if (!deck_name?.trim() || clean.length === 0) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: "Provide a deck_name and at least one question with 2+ options and an answer that matches one option exactly.",
+            },
+          ],
+        };
+      }
+
+      const decks = await loadDecks();
+      const existing = decks[deck_name] ?? [];
+      const merged = (append ? [...existing, ...clean] : clean).slice(0, MAX_CARDS);
+      const updated: DeckMap = { ...decks, [deck_name]: merged };
+      await saveDecks(updated);
+
+      const names = Object.keys(updated);
+      const { dueCount, newCount } = counts(merged);
+      const note = `Saved quiz "${deck_name}" with ${merged.length} question(s).`;
       return deckResult(deck_name, slimOf(merged, deck_name), names, note, dueCount, newCount);
     },
   );

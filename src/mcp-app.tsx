@@ -20,6 +20,7 @@ import {
   buildTree,
   TreeView,
   CardList,
+  QuizCard,
 } from "./deck-lib";
 
 /** true = correct, false = missed, undefined = not graded yet. */
@@ -77,6 +78,7 @@ function Deck({
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [view, setView] = useState<"review" | "list" | "tree">("review");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [picked, setPicked] = useState<string | null>(null);
 
   useEffect(() => {
     setCards(meta.cards);
@@ -87,6 +89,7 @@ function Deck({
     setEditing(false);
     setConfirmingDelete(false);
     setView("review");
+    setPicked(null);
   }, [result]);
 
   const pad = {
@@ -201,6 +204,7 @@ function Deck({
     setFlipped(false);
     setEditing(false);
     setConfirmingDelete(false);
+    setPicked(null);
   };
 
   /** Remove card i locally (stay in place) and persist via delete_card on its deck. */
@@ -247,6 +251,7 @@ function Deck({
     setEditBack(cards[index].back);
     setFlipped(false);
     setConfirmingDelete(false);
+    setPicked(null);
     setEditing(true);
   };
 
@@ -379,38 +384,62 @@ function Deck({
         </div>
       ) : (
         <>
-          <div
-            className={styles.scene}
-            onClick={() => setFlipped((f) => !f)}
-            role="button"
-            tabIndex={0}
-            aria-label="Flashcard, click to flip"
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                setFlipped((f) => !f);
-              }
-            }}
-          >
-            <div className={`${styles.card} ${flipped ? styles.cardFlipped : ""}`}>
-              <div className={styles.face}>
-                <span className={styles.faceLabel}>Front</span>
-                {card.front}
-              </div>
-              <div className={`${styles.face} ${styles.faceBack}`}>
-                <span className={styles.faceLabel}>Back</span>
-                {card.back}
-              </div>
-            </div>
-          </div>
-
-          {flipped ? (
-            <div className={styles.controls}>
-              <button className={styles.gradeWrong} onClick={() => grade(false)}>Missed it</button>
-              <button className={styles.gradeRight} onClick={() => grade(true)}>Got it</button>
-            </div>
+          {card.options ? (
+            <>
+              <QuizCard card={card} picked={picked} onPick={setPicked} />
+              {picked !== null ? (
+                <div className={styles.controls}>
+                  <button
+                    className={styles.accentBtn}
+                    onClick={() => {
+                      const correct = picked === card.back;
+                      setPicked(null);
+                      grade(correct);
+                    }}
+                  >
+                    Next
+                  </button>
+                </div>
+              ) : (
+                <p className={styles.hint}>Pick an answer</p>
+              )}
+            </>
           ) : (
-            <p className={styles.hint}>Click the card to reveal the answer</p>
+            <>
+              <div
+                className={styles.scene}
+                onClick={() => setFlipped((f) => !f)}
+                role="button"
+                tabIndex={0}
+                aria-label="Flashcard, click to flip"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setFlipped((f) => !f);
+                  }
+                }}
+              >
+                <div className={`${styles.card} ${flipped ? styles.cardFlipped : ""}`}>
+                  <div className={styles.face}>
+                    <span className={styles.faceLabel}>Front</span>
+                    {card.front}
+                  </div>
+                  <div className={`${styles.face} ${styles.faceBack}`}>
+                    <span className={styles.faceLabel}>Back</span>
+                    {card.back}
+                  </div>
+                </div>
+              </div>
+
+              {flipped ? (
+                <div className={styles.controls}>
+                  <button className={styles.gradeWrong} onClick={() => grade(false)}>Missed it</button>
+                  <button className={styles.gradeRight} onClick={() => grade(true)}>Got it</button>
+                </div>
+              ) : (
+                <p className={styles.hint}>Click the card to reveal the answer</p>
+              )}
+            </>
           )}
 
           {confirmingDelete ? (

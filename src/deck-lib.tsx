@@ -7,7 +7,7 @@ import { useState } from "react";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import styles from "./mcp-app.module.css";
 
-export type Card = { front: string; back: string; deck: string };
+export type Card = { front: string; back: string; deck: string; options?: string[] };
 
 export interface DeckData {
   deck: string;
@@ -176,5 +176,39 @@ export function CardList({
         </li>
       ))}
     </ul>
+  );
+}
+
+/** Multiple-choice question: pick an option, then correct/wrong is revealed. */
+export function QuizCard({
+  card,
+  picked,
+  onPick,
+}: {
+  card: Card;
+  picked: string | null;
+  onPick: (opt: string) => void;
+}) {
+  const revealed = picked !== null;
+  return (
+    <div className={styles.quiz}>
+      <div className={styles.quizQuestion}>{card.front}</div>
+      <div className={styles.quizOptions}>
+        {(card.options ?? []).map((opt, i) => {
+          const cls = [
+            styles.quizOption,
+            revealed && opt === card.back ? styles.quizCorrect : "",
+            revealed && opt === picked && opt !== card.back ? styles.quizWrong : "",
+          ]
+            .filter(Boolean)
+            .join(" ");
+          return (
+            <button key={i} className={cls} onClick={() => !revealed && onPick(opt)} disabled={revealed}>
+              {opt}
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }
