@@ -19,15 +19,28 @@ import { z } from "zod";
 import fs from "node:fs/promises";
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import { fsrs, generatorParameters, createEmptyCard, Rating, type Card as FsrsCard } from "ts-fsrs";
 
 /** A flashcard. The optional fields hold spaced-repetition state (absent = new card). */
+/** Full FSRS card state (ts-fsrs), persisted so reviews can be reconstructed. */
+type FsrsState = {
+  due: string; // ISO datetime
+  stability: number;
+  difficulty: number;
+  elapsed_days: number;
+  scheduled_days: number;
+  reps: number;
+  lapses: number;
+  learning_steps: number;
+  state: number; // ts-fsrs State (0 New, 1 Learning, 2 Review, 3 Relearning)
+  last_review?: string; // ISO datetime
+};
+
 type Card = {
   front: string;
   back: string;
-  due?: string; // ISO date (YYYY-MM-DD) the card is next due
-  interval?: number; // days until next review
-  ease?: number; // SM-2 ease factor
-  reps?: number; // consecutive successful reviews
+  due?: string; // YYYY-MM-DD next-due date (derived from FSRS), for ordering + due_today
+  srs?: FsrsState; // FSRS scheduling state (absent = never reviewed)
 };
 type DeckMap = Record<string, Card[]>;
 
@@ -61,44 +74,56 @@ const DECK_OUTPUT = {
   newCount: z.number(),
 };
 
-// --- spaced repetition (SM-2-lite) ---------------------------------------
+// --- spaced repetition (FSRS via ts-fsrs) --------------------------------
 
 function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-function dateInDays(days: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() + Math.max(0, Math.round(days)));
-  return d.toISOString().slice(0, 10);
+// Day-scale scheduling for a once-a-day study loop: no short same-day learning steps.
+const scheduler = fsrs(
+  generatorParameters({ enable_fuzz: false, learning_steps: [], relearning_steps: [] }),
+);
+
+/** Reconstruct a ts-fsrs Card from stored state, or a fresh one. */
+function toFsrsCard(card: Card, now: Date): FsrsCard {
+  const s = card.srs;
+  if (!s) return createEmptyCard(now);
+  return {
+    due: new Date(s.due),
+    stability: s.stability,
+    difficulty: s.difficulty,
+    elapsed_days: s.elapsed_days,
+    scheduled_days: s.scheduled_days,
+    reps: s.reps,
+    lapses: s.lapses,
+    learning_steps: s.learning_steps,
+    state: s.state,
+    last_review: s.last_review ? new Date(s.last_review) : undefined,
+  } as FsrsCard;
 }
 
-/** Apply one review result, returning a NEW card with updated schedule. */
+/** Apply one review result with FSRS, returning a NEW card with updated schedule. */
 function schedule(card: Card, correct: boolean): Card {
-  let ease = card.ease ?? 2.5;
-  let reps = card.reps ?? 0;
-  let interval = card.interval ?? 0;
-
-  if (correct) {
-    reps += 1;
-    if (reps === 1) interval = 1;
-    else if (reps === 2) interval = 6;
-    else interval = Math.round(interval * ease);
-    ease = Math.min(3.0, ease + 0.1);
-  } else {
-    reps = 0;
-    interval = 1;
-    ease = Math.max(1.3, ease - 0.2);
-  }
-
-  return {
-    front: card.front,
-    back: card.back,
-    ease: Math.round(ease * 100) / 100,
-    reps,
-    interval,
-    due: dateInDays(interval),
+  const now = new Date();
+  const { card: next } = scheduler.next(
+    toFsrsCard(card, now),
+    now,
+    correct ? Rating.Good : Rating.Again,
+  );
+  const srs: FsrsState = {
+    due: next.due.toISOString(),
+    stability: Math.round(next.stability * 1000) / 1000,
+    difficulty: Math.round(next.difficulty * 1000) / 1000,
+    elapsed_days: next.elapsed_days,
+    scheduled_days: next.scheduled_days,
+    reps: next.reps,
+    lapses: next.lapses,
+    learning_steps: next.learning_steps,
+    state: next.state,
+    last_review: next.last_review ? next.last_review.toISOString() : now.toISOString(),
   };
+  return { front: card.front, back: card.back, due: next.due.toISOString().slice(0, 10), srs };
 }
 
 // --- deck storage --------------------------------------------------------
@@ -109,9 +134,9 @@ function toCard(c: unknown): Card | null {
   if (typeof o.front !== "string" || typeof o.back !== "string") return null;
   const card: Card = { front: o.front, back: o.back };
   if (typeof o.due === "string") card.due = o.due;
-  if (typeof o.interval === "number") card.interval = o.interval;
-  if (typeof o.ease === "number") card.ease = o.ease;
-  if (typeof o.reps === "number") card.reps = o.reps;
+  if (o.srs && typeof o.srs === "object" && typeof (o.srs as { stability?: unknown }).stability === "number") {
+    card.srs = o.srs as FsrsState;
+  }
   return card;
 }
 
@@ -323,7 +348,7 @@ export function createServer(): McpServer {
         content: [
           {
             type: "text",
-            text: `Scheduled "${front}" -> due ${updated.due} (interval ${updated.interval}d, reps ${updated.reps}).`,
+            text: `Scheduled "${front}" -> due ${updated.due} (reps ${updated.srs?.reps ?? 0}, ${updated.srs?.scheduled_days ?? 0}d).`,
           },
         ],
       };
@@ -492,6 +517,46 @@ export function createServer(): McpServer {
             text: `Deleted deck "${deck_name}" (${count} cards). Remaining decks: ${Object.keys(rest).join(", ")}.`,
           },
         ],
+      };
+    },
+  );
+
+  // due_today: cross-deck summary of what is due now (pull-based; call it to see it).
+  server.registerTool(
+    "due_today",
+    {
+      title: "Due Today",
+      description:
+        "Summarize what is due to review right now across all decks: per-deck and total " +
+        "due/new counts. Pull-based (call it to see the summary); it does not appear on its own.",
+      inputSchema: {},
+      outputSchema: {
+        date: z.string(),
+        totalDue: z.number(),
+        totalNew: z.number(),
+        decks: z.array(z.object({ deck: z.string(), dueCount: z.number(), newCount: z.number() })),
+      },
+    },
+    async (): Promise<CallToolResult> => {
+      const decks = await loadDecks();
+      const today = todayISO();
+      const rows = Object.entries(decks).map(([name, cards]) => ({
+        deck: name,
+        dueCount: cards.filter((c) => c.due && c.due <= today).length,
+        newCount: cards.filter((c) => !c.due).length,
+      }));
+      const totalDue = rows.reduce((a, r) => a + r.dueCount, 0);
+      const totalNew = rows.reduce((a, r) => a + r.newCount, 0);
+      const lines = rows
+        .filter((r) => r.dueCount > 0 || r.newCount > 0)
+        .map((r) => `- ${r.deck}: ${r.dueCount} due, ${r.newCount} new`);
+      const text =
+        `Due today (${today}):\n` +
+        (lines.length ? lines.join("\n") : "- nothing due or new") +
+        `\n\nTotal: ${totalDue} due, ${totalNew} new across ${rows.length} decks.`;
+      return {
+        content: [{ type: "text", text }],
+        structuredContent: { date: today, totalDue, totalNew, decks: rows },
       };
     },
   );

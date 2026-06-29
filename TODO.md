@@ -6,8 +6,8 @@ Backlog captured 2026-06-28. Check items off as they land.
 - [x] `edit_card` tool: edit a single card's front/back (e.g. "change the back of card 3 to ...").
 - [x] Editable flip-card UI: edit card text inline with a Save button that persists to `data/decks.json`.
 - [x] Deck management tools: rename deck, delete deck, delete card.
-- [ ] Fuller FSRS scheduler to replace the current SM-2-lite scheduling.
-- [ ] "Due today" overview across all decks (a home / dashboard view).
+- [x] Fuller FSRS scheduler to replace the current SM-2-lite scheduling (via ts-fsrs).
+- [x] "Due today" overview across all decks (pull-based `due_today` tool; cannot self-appear).
 - [ ] Cloze and reverse-card support.
 
 ## Distribution and discoverability

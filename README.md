@@ -17,7 +17,7 @@ Built on the [MCP Apps extension](https://github.com/modelcontextprotocol/ext-ap
 
 - **`review_deck`**: opens a deck as an inline flip-card UI. Click to flip, grade **Got it** / **Missed it**, see a results screen. Due cards come first, and grades are sent back to the model via the host bridge.
 - **`create_deck`**: Claude generates cards from your request or the chat, saves them to `data/decks.json`, and renders them immediately. They persist, so `review_deck` can replay them later. Generation follows Memora's card-quality rules (atomic single-concept cards, 1-5 word answers, active-recall or cloze prompts, unambiguous).
-- **`grade_card`** (spaced repetition): each grade persists a per-card schedule (due date, interval, ease, reps) using a simple SM-2-style algorithm, so weak cards resurface sooner.
+- **`grade_card`** (spaced repetition): each grade persists a per-card **FSRS** schedule (via [`ts-fsrs`](https://github.com/open-spaced-repetition/ts-fsrs)), so weak cards resurface sooner. **`due_today`** summarizes what is due across all your decks.
 - **Deck picker**: switch between your decks from buttons in the UI, no retyping in chat.
 - Decks are plain JSON read **live** on every call, so you can hand-edit them or let Claude create them. No database, no external service.
 
@@ -69,6 +69,7 @@ Then fully quit Claude Desktop (from the system tray) and relaunch. `memora` sho
 - `make me a deck of 10 Spanish travel phrases`
 - `turn what we just discussed into a deck called "Photosynthesis"`
 - `add 5 harder capitals to my World Capitals deck`  (uses `append`)
+- `what's due today?`
 
 ## Development
 

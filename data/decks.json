@@ -29,16 +29,16 @@
       "back": "What a word advertises about itself",
       "due": "2026-06-30",
       "interval": 1,
-      "ease": 2.3,
+      "ease": 2.1,
       "reps": 0
     },
     {
       "front": "In attention, what does the VALUE represent?",
       "back": "The information a word hands over if attended to",
-      "due": "2026-06-30",
+      "ease": 2.1,
+      "reps": 0,
       "interval": 1,
-      "ease": 2.3,
-      "reps": 0
+      "due": "2026-06-30"
     },
     {
       "front": "In one phrase, what does attention do?",
@@ -163,10 +163,10 @@
     {
       "front": "Why does long context get heavy at runtime?",
       "back": "The KV cache grows with length and becomes the bottleneck",
-      "ease": 2.3,
-      "reps": 0,
+      "due": "2026-06-30",
       "interval": 1,
-      "due": "2026-06-30"
+      "ease": 2.3,
+      "reps": 0
     },
     {
       "front": "Batching improves what?",
