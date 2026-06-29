@@ -57,10 +57,10 @@
     {
       "front": "to be (permanent)",
       "back": "ser",
-      "ease": 2.3,
-      "reps": 0,
+      "due": "2026-06-30",
       "interval": 1,
-      "due": "2026-06-30"
+      "ease": 2.3,
+      "reps": 0
     },
     {
       "front": "to be (temporary)",
@@ -213,6 +213,120 @@
     {
       "front": "Google said DMA data-sharing creates what two risks?",
       "back": "Privacy and cybersecurity"
+    }
+  ],
+  "LLM Fundamentals": [
+    {
+      "front": "What is a token?",
+      "back": "A chunk of text (~3/4 of a word) turned into a number the model works on",
+      "due": "2026-06-30",
+      "interval": 1,
+      "ease": 2.6,
+      "reps": 1
+    },
+    {
+      "front": "What is the 'context window'?",
+      "back": "How many tokens the model can hold at once",
+      "due": "2026-06-30",
+      "interval": 1,
+      "ease": 2.6,
+      "reps": 1
+    },
+    {
+      "front": "In attention, what does the QUERY represent?",
+      "back": "What a word is looking for",
+      "ease": 2.3,
+      "reps": 0,
+      "interval": 1,
+      "due": "2026-06-30"
+    },
+    {
+      "front": "In attention, what does the KEY represent?",
+      "back": "What a word advertises about itself"
+    },
+    {
+      "front": "In attention, what does the VALUE represent?",
+      "back": "The information a word hands over if attended to"
+    },
+    {
+      "front": "In one phrase, what does attention do?",
+      "back": "Every word checks every other word for relevance"
+    },
+    {
+      "front": "Running several attention passes in parallel is called?",
+      "back": "Multi-head attention"
+    },
+    {
+      "front": "Why are context windows expensive/limited?",
+      "back": "Work grows with the square of the sequence length"
+    },
+    {
+      "front": "A decoder-only transformer generates text how?",
+      "back": "One token at a time"
+    },
+    {
+      "front": "Training stage 1: learning patterns from huge text is called?",
+      "back": "Pretraining"
+    },
+    {
+      "front": "What game does a model play during pretraining?",
+      "back": "Predict the next token"
+    },
+    {
+      "front": "Training stage that teaches instruction-following?",
+      "back": "Supervised fine-tuning (SFT)"
+    },
+    {
+      "front": "Training stage that aligns to human preferences?",
+      "back": "RLHF (or DPO)"
+    },
+    {
+      "front": "What does 'inference' mean?",
+      "back": "Running the finished (frozen) model to generate text"
+    },
+    {
+      "front": "Inference phase that processes the whole prompt at once?",
+      "back": "Prefill"
+    },
+    {
+      "front": "Inference phase that writes output one token at a time?",
+      "back": "Decode"
+    },
+    {
+      "front": "What is quantization?",
+      "back": "Storing weights in fewer bits to shrink the model"
+    },
+    {
+      "front": "Quantization's main tradeoff?",
+      "back": "Smaller/faster vs slight quality loss"
+    },
+    {
+      "front": "GGUF is a [what]?",
+      "back": "File format for quantized models"
+    },
+    {
+      "front": "What does the KV cache store?",
+      "back": "Keys and Values of previous tokens during decode"
+    },
+    {
+      "front": "Why does long context get heavy at runtime?",
+      "back": "The KV cache grows with length and becomes the bottleneck"
+    },
+    {
+      "front": "Batching improves what?",
+      "back": "Throughput (serving many requests efficiently)"
+    },
+    {
+      "front": "Training a small model to mimic a big one is called?",
+      "back": "Distillation"
+    },
+    {
+      "front": "Small model drafts tokens, big model verifies, this is?",
+      "back": "Speculative decoding"
+    },
+    {
+      "front": "Which layer is Jeff's hands-on LLM experience?",
+      "back": "Application/integration plus running models locally"
     }
   ]
 }

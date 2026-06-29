@@ -117,6 +117,7 @@ function Deck({
   const [editing, setEditing] = useState(false);
   const [editFront, setEditFront] = useState("");
   const [editBack, setEditBack] = useState("");
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   // Reset to a fresh review whenever a new deck arrives.
   useEffect(() => {
@@ -126,6 +127,7 @@ function Deck({
     setGrades(meta.cards.map(() => undefined));
     setDone(false);
     setEditing(false);
+    setConfirmingDelete(false);
   }, [result]);
 
   const pad = {
@@ -231,10 +233,25 @@ function Deck({
     setEditFront(cards[index].front);
     setEditBack(cards[index].back);
     setFlipped(false);
+    setConfirmingDelete(false);
     setEditing(true);
   };
 
   const cancelEdit = () => setEditing(false);
+
+  const doDelete = async () => {
+    const f = cards[index].front;
+    setConfirmingDelete(false);
+    setBusy(true);
+    try {
+      const r = await app.callServerTool({ name: "delete_card", arguments: { deck_name: deck, front: f } });
+      setResult(r as CallToolResult);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const saveEdit = () => {
     const nf = editFront.trim();
@@ -355,7 +372,19 @@ function Deck({
             <p className={styles.hint}>Click the card to reveal the answer</p>
           )}
 
-          <button className={styles.editTrigger} onClick={startEdit}>Edit card</button>
+          {confirmingDelete ? (
+            <div className={styles.editActions}>
+              <button className={styles.cancelBtn} onClick={() => setConfirmingDelete(false)}>Cancel</button>
+              <button className={styles.dangerBtn} onClick={doDelete} disabled={busy}>Delete card</button>
+            </div>
+          ) : (
+            <div className={styles.cardActions}>
+              <button className={styles.editTrigger} onClick={startEdit}>Edit card</button>
+              {cards.length > 1 && (
+                <button className={styles.editTrigger} onClick={() => setConfirmingDelete(true)}>Delete card</button>
+              )}
+            </div>
+          )}
         </>
       )}
 

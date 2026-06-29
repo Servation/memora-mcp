@@ -377,6 +377,125 @@ export function createServer(): McpServer {
     },
   );
 
+  // rename_deck: rename a deck, preserving card order and schedules.
+  registerAppTool(
+    server,
+    "rename_deck",
+    {
+      title: "Rename Deck",
+      description: "Rename a deck. Fails if a deck with the new name already exists.",
+      inputSchema: {
+        deck_name: z.string().describe("Current deck name."),
+        new_name: z.string().describe("New deck name."),
+      },
+      outputSchema: DECK_OUTPUT,
+      _meta: { ui: { resourceUri: RESOURCE_URI } },
+    },
+    async ({ deck_name, new_name }): Promise<CallToolResult> => {
+      const decks = await loadDecks();
+      if (!decks[deck_name]) {
+        return { isError: true, content: [{ type: "text", text: `Deck "${deck_name}" not found.` }] };
+      }
+      const newName = new_name.trim();
+      if (!newName) {
+        return { isError: true, content: [{ type: "text", text: "Provide a non-empty new_name." }] };
+      }
+      if (newName !== deck_name && decks[newName]) {
+        return { isError: true, content: [{ type: "text", text: `A deck named "${newName}" already exists.` }] };
+      }
+      // Rebuild preserving key order, renaming in place.
+      const renamed: DeckMap = {};
+      for (const [k, v] of Object.entries(decks)) renamed[k === deck_name ? newName : k] = v;
+      await saveDecks(renamed);
+
+      const names = Object.keys(renamed);
+      const cards = renamed[newName];
+      const today = todayISO();
+      const dueCount = cards.filter((c) => c.due && c.due <= today).length;
+      const newCount = cards.filter((c) => !c.due).length;
+      return deckResult(newName, cards, names, `Renamed "${deck_name}" to "${newName}".`, dueCount, newCount);
+    },
+  );
+
+  // delete_card: remove a single card (identified by front). Refuses to empty a deck.
+  registerAppTool(
+    server,
+    "delete_card",
+    {
+      title: "Delete Card",
+      description:
+        "Delete a single card from a deck, identified by its front text. Refuses to delete a " +
+        "deck's last card (delete the deck instead).",
+      inputSchema: {
+        deck_name: z.string().describe("Deck the card belongs to."),
+        front: z.string().describe("The card's front text (identifies the card)."),
+      },
+      outputSchema: DECK_OUTPUT,
+      _meta: { ui: { resourceUri: RESOURCE_URI } },
+    },
+    async ({ deck_name, front }): Promise<CallToolResult> => {
+      const decks = await loadDecks();
+      const cards = decks[deck_name];
+      if (!cards) {
+        return { isError: true, content: [{ type: "text", text: `Deck "${deck_name}" not found.` }] };
+      }
+      const idx = cards.findIndex((c) => c.front === front);
+      if (idx < 0) {
+        return { isError: true, content: [{ type: "text", text: `Card not found in "${deck_name}".` }] };
+      }
+      if (cards.length <= 1) {
+        return {
+          isError: true,
+          content: [
+            { type: "text", text: `Cannot delete the only card in "${deck_name}"; delete the deck instead.` },
+          ],
+        };
+      }
+      const newCards = cards.filter((_, i) => i !== idx);
+      await saveDecks({ ...decks, [deck_name]: newCards });
+
+      const names = Object.keys(decks);
+      const today = todayISO();
+      const dueCount = newCards.filter((c) => c.due && c.due <= today).length;
+      const newCount = newCards.filter((c) => !c.due).length;
+      return deckResult(deck_name, newCards, names, `Deleted a card from "${deck_name}".`, dueCount, newCount);
+    },
+  );
+
+  // delete_deck: remove a whole deck (text-only, no UI to render). Refuses the last deck.
+  server.registerTool(
+    "delete_deck",
+    {
+      title: "Delete Deck",
+      description: "Delete a deck and all its cards. Refuses to delete the only remaining deck.",
+      inputSchema: {
+        deck_name: z.string().describe("Deck to delete."),
+      },
+    },
+    async ({ deck_name }): Promise<CallToolResult> => {
+      const decks = await loadDecks();
+      if (!decks[deck_name]) {
+        return { isError: true, content: [{ type: "text", text: `Deck "${deck_name}" not found.` }] };
+      }
+      const names = Object.keys(decks);
+      if (names.length <= 1) {
+        return { isError: true, content: [{ type: "text", text: "Cannot delete the only remaining deck." }] };
+      }
+      const count = decks[deck_name].length;
+      const rest: DeckMap = { ...decks };
+      delete rest[deck_name];
+      await saveDecks(rest);
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Deleted deck "${deck_name}" (${count} cards). Remaining decks: ${Object.keys(rest).join(", ")}.`,
+          },
+        ],
+      };
+    },
+  );
+
   // Resource: the bundled flip-card HTML/JS the host renders in a sandboxed iframe.
   registerAppResource(
     server,

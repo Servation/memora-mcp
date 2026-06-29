@@ -263,3 +263,14 @@
   text-decoration: underline;
   padding: 0;
 }
+
+.cardActions {
+  display: flex;
+  gap: var(--spacing-md);
+  justify-content: center;
+}
+
+.dangerBtn {
+  background-color: #dc2626;
+  color: #ffffff;
+}
