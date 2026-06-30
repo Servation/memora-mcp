@@ -8,3 +8,7 @@ data/*.tmp
 *.log
 *.tgz
 .DS_Store
+
+# mcp-publisher CLI (downloaded for registry publishing)
+mcp-publisher.exe
+mcp-publisher*.tar.gz
