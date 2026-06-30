@@ -16,8 +16,8 @@ Backlog captured 2026-06-28. Check items off as they land.
 ## Distribution and discoverability
 - [x] Publish to npm: `@servation/memora-mcp` (scoped; `bin` + shebang, `files`, prepack build, per-user `~/.memora` storage). `npx -y @servation/memora-mcp --stdio`.
 - [x] Register in the official MCP Registry: `io.github.Servation/memora-mcp` (`server.json` + `mcpName` ownership marker, published via `mcp-publisher`).
-- [ ] PR to awesome-mcp-servers and similar curated lists.
-- [ ] Submit to MCP directories (glama.ai, mcp.so, Smithery).
+- [x] PR to awesome-mcp-servers (punkpeye/awesome-mcp-servers#8960, Education category; pending maintainer merge).
+- [ ] Submit to MCP directories: mcpservers.org/submit form (values ready); glama.ai / mcp.so / Smithery often auto-ingest from the MCP Registry.
 - [ ] Social-preview image (upload in repo Settings).
 - [ ] Real screen-capture GIF for the README hero (replace the SVG mockup).
 
