@@ -58,18 +58,38 @@ A tool declares a `ui://` resource. When Claude calls the tool, the host (Claude
 
 ### Prerequisites
 
-- Node.js 20+
-
-### Install and build
-
-```bash
-npm install
-npm run build   # bundles the UI (dist/mcp-app.html) and compiles the server (dist/)
-```
+- Node.js 20.11+
 
 ### Connect to Claude Desktop
 
-Open **Settings > Developer > Edit Config** and add the absolute path to this folder:
+Open **Settings > Developer > Edit Config** and add Memora under `mcpServers`:
+
+```json
+{
+  "mcpServers": {
+    "memora": {
+      "command": "npx",
+      "args": ["-y", "memora-mcp", "--stdio"]
+    }
+  }
+}
+```
+
+Then fully quit Claude Desktop (from the system tray) and relaunch. `memora` appears under Settings > Developer, pre-loaded with a few sample decks.
+
+Your decks are stored in `~/.memora/decks.json` (override the path with the `MEMORA_DECKS` environment variable). Hand-edit that file or let Claude manage it.
+
+<details>
+<summary><b>Run from source instead</b></summary>
+
+```bash
+git clone https://github.com/Servation/memora-mcp.git
+cd memora-mcp
+npm install
+npm run build
+```
+
+Point the config at the built entry with an absolute path (decks then live in the repo's `data/decks.json`):
 
 ```json
 {
@@ -81,8 +101,7 @@ Open **Settings > Developer > Edit Config** and add the absolute path to this fo
   }
 }
 ```
-
-Then fully quit Claude Desktop (from the system tray) and relaunch. `memora` should appear under Settings > Developer.
+</details>
 
 ### Try it (in a Claude Desktop chat)
 
@@ -102,7 +121,7 @@ Then fully quit Claude Desktop (from the system tray) and relaunch. `memora` sho
 - **Scheduling**: [`ts-fsrs`](https://github.com/open-spaced-repetition/ts-fsrs) (FSRS).
 - Runtime is plain `node` once built (no bun or tsx needed).
 
-## Deck format (`data/decks.json`)
+## Deck format
 
 ```json
 {
@@ -112,6 +131,7 @@ Then fully quit Claude Desktop (from the system tray) and relaunch. `memora` sho
 }
 ```
 
+- Stored in `~/.memora/decks.json` when installed (or `data/decks.json` from source); override with `MEMORA_DECKS`.
 - Read live (mtime-cached). `create_deck`, `create_quiz`, and `grade_card` write here atomically.
 - A **quiz** card adds `"options": ["...", "..."]`; its `back` is the correct option.
 - A **cloze** card writes the blank as `[...]` in the front, with the hidden term as the `back`.

@@ -1,0 +1,25 @@
+{
+  "Geography::World Capitals": [
+    { "front": "Capital of France?", "back": "Paris" },
+    { "front": "Capital of Japan?", "back": "Tokyo" },
+    { "front": "Capital of Canada?", "back": "Ottawa" },
+    { "front": "Capital of Australia?", "back": "Canberra" },
+    { "front": "Capital of Brazil?", "back": "Brasilia" }
+  ],
+  "Geography::Rivers": [
+    { "front": "Longest river in the world?", "back": "Nile" },
+    { "front": "Longest river in South America?", "back": "Amazon" },
+    { "front": "The [...] is the longest river in Europe.", "back": "Volga" }
+  ],
+  "Science::Solar System": [
+    { "front": "Which is the largest planet?", "options": ["Jupiter", "Saturn", "Neptune", "Earth"], "back": "Jupiter" },
+    { "front": "Which planet is closest to the Sun?", "options": ["Mercury", "Venus", "Mars"], "back": "Mercury" },
+    { "front": "The Sun is mostly made of which element?", "options": ["Hydrogen", "Oxygen", "Carbon"], "back": "Hydrogen" }
+  ],
+  "Language::Spanish Basics": [
+    { "front": "hello", "back": "hola" },
+    { "front": "thank you", "back": "gracias" },
+    { "front": "please", "back": "por favor" },
+    { "front": "good morning", "back": "buenos dias" }
+  ]
+}

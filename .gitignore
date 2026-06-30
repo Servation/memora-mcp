@@ -6,4 +6,5 @@ data/*.tmp
 
 # misc
 *.log
+*.tgz
 .DS_Store

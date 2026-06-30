@@ -5,6 +5,7 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import fs from "node:fs/promises";
 import { readFileSync } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { shuffle, todayISO } from "./scheduling.js";
 
@@ -39,7 +40,21 @@ export type Tagged = { card: Card; deck: string };
 const fromSource = import.meta.filename.endsWith(".ts");
 const PROJECT_ROOT = fromSource ? import.meta.dirname : path.join(import.meta.dirname, "..");
 export const DIST_DIR = fromSource ? path.join(import.meta.dirname, "dist") : import.meta.dirname;
-const DECKS_PATH = path.join(PROJECT_ROOT, "data", "decks.json");
+
+// Where the editable deck file lives:
+//  - MEMORA_DECKS env override always wins.
+//  - From source (cloned repo via tsx): the repo's data/decks.json, for dev.
+//  - Installed (compiled, e.g. via npx): a per-user file under the home dir, so
+//    we never write into the read-only package directory in node_modules.
+const DECKS_PATH = process.env.MEMORA_DECKS
+  ? path.resolve(process.env.MEMORA_DECKS)
+  : fromSource
+    ? path.join(PROJECT_ROOT, "data", "decks.json")
+    : path.join(os.homedir(), ".memora", "decks.json");
+
+// Bundled starter decks. Used read-only when the user file does not exist yet;
+// the first write (create/grade) seeds the real user file from the current set.
+const SAMPLE_PATH = path.join(PROJECT_ROOT, "data", "decks.sample.json");
 
 /** Used only if data/decks.json is missing or invalid. */
 const FALLBACK_DECKS: DeckMap = {
@@ -81,7 +96,11 @@ export function loadDecksSync(): DeckMap {
   try {
     return parseDecks(readFileSync(DECKS_PATH, "utf-8"));
   } catch {
-    return FALLBACK_DECKS;
+    try {
+      return parseDecks(readFileSync(SAMPLE_PATH, "utf-8"));
+    } catch {
+      return FALLBACK_DECKS;
+    }
   }
 }
 
@@ -95,12 +114,19 @@ export async function loadDecks(): Promise<DeckMap> {
     decksCache = { mtimeMs, decks };
     return decks;
   } catch {
-    return FALLBACK_DECKS;
+    // No user file yet: fall back to the bundled sample (read-only), then the
+    // built-in default. The first write seeds the user file from this set.
+    try {
+      return parseDecks(await fs.readFile(SAMPLE_PATH, "utf-8"));
+    } catch {
+      return FALLBACK_DECKS;
+    }
   }
 }
 
 /** Write decks atomically (temp + rename) so concurrent reads never see a partial file. */
 export async function saveDecks(decks: DeckMap): Promise<void> {
+  await fs.mkdir(path.dirname(DECKS_PATH), { recursive: true }); // user dir may not exist yet
   const tmp = DECKS_PATH + ".tmp";
   await fs.writeFile(tmp, JSON.stringify(decks, null, 2) + "\n", "utf-8");
   await fs.rename(tmp, DECKS_PATH);

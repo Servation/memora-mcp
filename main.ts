@@ -1,7 +1,8 @@
+#!/usr/bin/env node
 /**
- * Entry point for running the MCP server.
- * Run with: npx @modelcontextprotocol/server-basic-react
- * Or: node dist/index.js [--stdio]
+ * Entry point for running the Memora MCP server.
+ * Claude Desktop (stdio): node dist/main.js --stdio   (or: npx memora-mcp --stdio)
+ * Streamable HTTP (default, dev/hosting): node dist/main.js
  */
 
 import { createMcpExpressApp } from "@modelcontextprotocol/sdk/server/express.js";
