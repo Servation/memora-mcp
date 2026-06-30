@@ -14,8 +14,8 @@ Backlog captured 2026-06-28. Check items off as they land.
 - [x] Cloze (inline fill-in-the-blank reveal) and reverse-card support (`reverse` flag on create_deck).
 
 ## Distribution and discoverability
-- [ ] Publish to npm (un-private package, `bin` + shebang, `files`, build-on-publish) so it is `npx`-installable.
-- [ ] Register in the official MCP Registry (`server.json` + `mcp-publisher`, GitHub auth). Needs the npm publish first.
+- [x] Publish to npm: `@servation/memora-mcp` (scoped; `bin` + shebang, `files`, prepack build, per-user `~/.memora` storage). `npx -y @servation/memora-mcp --stdio`.
+- [x] Register in the official MCP Registry: `io.github.Servation/memora-mcp` (`server.json` + `mcpName` ownership marker, published via `mcp-publisher`).
 - [ ] PR to awesome-mcp-servers and similar curated lists.
 - [ ] Submit to MCP directories (glama.ai, mcp.so, Smithery).
 - [ ] Social-preview image (upload in repo Settings).
