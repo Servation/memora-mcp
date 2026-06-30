@@ -69,7 +69,7 @@ Open **Settings > Developer > Edit Config** and add Memora under `mcpServers`:
   "mcpServers": {
     "memora": {
       "command": "npx",
-      "args": ["-y", "memora-mcp", "--stdio"]
+      "args": ["-y", "@servation/memora-mcp", "--stdio"]
     }
   }
 }

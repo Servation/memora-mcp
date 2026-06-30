@@ -1,5 +1,5 @@
 {
-  "name": "memora-mcp",
+  "name": "@servation/memora-mcp",
   "version": "0.1.0",
   "type": "module",
   "description": "Interactive flashcards, quizzes, and cloze cards with spaced repetition for Claude Desktop, as an MCP App (inline UI).",
