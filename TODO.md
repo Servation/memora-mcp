@@ -11,7 +11,7 @@ Backlog captured 2026-06-28. Check items off as they land.
 - [x] Category tree (Anki-style "::" deck names) + `study` tool (review a subtree) + tree picker UI.
 - [x] Trivia / multiple-choice (`create_quiz` + quiz review mode), reusing decks, the tree, and FSRS.
 - [x] Mind-map style viewer of the deck tree (pure-SVG horizontal tidy tree, no extra library).
-- [ ] Cloze and reverse-card support.
+- [x] Cloze (inline fill-in-the-blank reveal) and reverse-card support (`reverse` flag on create_deck).
 
 ## Distribution and discoverability
 - [ ] Publish to npm (un-private package, `bin` + shebang, `files`, build-on-publish) so it is `npx`-installable.

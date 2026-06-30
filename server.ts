@@ -31,6 +31,7 @@ import {
   orderAndSlim,
   slimOf,
   quizDeckNames,
+  isCloze,
   deckResult,
 } from "./decks.js";
 
@@ -147,8 +148,11 @@ export function createServer(): McpServer {
         "2. Concise answers: the back is ideally 1-5 words (a name, date, term, or single " +
         "concept), never a sentence or paragraph.\n" +
         "3. Active recall: make the front a specific question (not 'Explain X'), or a cloze " +
-        "deletion with the hidden term in [brackets] on the front and that term as the back.\n" +
-        "4. Unambiguous: each front must point to exactly one correct answer.",
+        "deletion: write the blank as \"[...]\" in the front and the hidden term as the back " +
+        "(e.g. front \"The Transformer was introduced in [...].\", back \"2017\").\n" +
+        "4. Unambiguous: each front must point to exactly one correct answer.\n\n" +
+        "Set reverse=true to also add the back->front version of each non-cloze card (useful " +
+        "for vocabulary or term/definition pairs that should be drilled both ways).",
       inputSchema: {
         deck_name: z.string().describe("Name for the deck to create or add to (\"::\" nests it)."),
         cards: z
@@ -158,11 +162,15 @@ export function createServer(): McpServer {
           .boolean()
           .optional()
           .describe("If true and the deck already exists, append to it; otherwise replace/create."),
+        reverse: z
+          .boolean()
+          .optional()
+          .describe("If true, also add the reverse (back -> front) of each non-cloze card."),
       },
       outputSchema: DECK_OUTPUT,
       _meta: { ui: { resourceUri: RESOURCE_URI } },
     },
-    async ({ deck_name, cards, append }): Promise<CallToolResult> => {
+    async ({ deck_name, cards, append, reverse }): Promise<CallToolResult> => {
       const clean: Card[] = (cards ?? [])
         .filter((c) => c && typeof c.front === "string" && typeof c.back === "string")
         .map((c) => ({ front: c.front.trim(), back: c.back.trim() }))
@@ -176,9 +184,17 @@ export function createServer(): McpServer {
         };
       }
 
+      // reverse: drill each pair both ways. Skip cloze cards (a "[...]" front has no
+      // sensible inverse) and degenerate front===back pairs.
+      const prepared: Card[] = reverse
+        ? clean.flatMap((c) =>
+            isCloze(c.front) || c.front === c.back ? [c] : [c, { front: c.back, back: c.front }],
+          )
+        : clean;
+
       const decks = await loadDecks();
       const existing = decks[deck_name] ?? [];
-      const merged = (append ? [...existing, ...clean] : clean).slice(0, MAX_CARDS);
+      const merged = (append ? [...existing, ...prepared] : prepared).slice(0, MAX_CARDS);
       const updated: DeckMap = { ...decks, [deck_name]: merged };
       await saveDecks(updated);
 

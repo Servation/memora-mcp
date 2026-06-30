@@ -16,7 +16,7 @@ Built on the [MCP Apps extension](https://github.com/modelcontextprotocol/ext-ap
 ## What it does
 
 - **`review_deck`**: opens a deck as an inline flip-card UI. Click to flip, grade **Got it** / **Missed it**, see a results screen. Due cards come first, and grades are sent back to the model via the host bridge.
-- **`create_deck`**: Claude generates cards from your request or the chat, saves them to `data/decks.json`, and renders them immediately. They persist, so `review_deck` can replay them later. Generation follows Memora's card-quality rules (atomic single-concept cards, 1-5 word answers, active-recall or cloze prompts, unambiguous).
+- **`create_deck`**: Claude generates cards from your request or the chat, saves them to `data/decks.json`, and renders them immediately. They persist, so `review_deck` can replay them later. Generation follows Memora's card-quality rules (atomic single-concept cards, 1-5 word answers, active-recall or cloze prompts, unambiguous). **Cloze** cards (write the blank as `[...]` in the front) render as an inline fill-in-the-blank that reveals in place; pass **`reverse`** to also drill each non-cloze card back-to-front.
 - **`create_quiz`**: Claude generates multiple-choice questions (`question` + `options` + `answer`); the UI shows the options, reveals correct/wrong on pick, and schedules them with the same FSRS. Quiz and flashcard decks share the same tree and review flow, and quiz decks are flagged with a badge in the tree and mind map.
 - **`grade_card`** (spaced repetition): each grade persists a per-card **FSRS** schedule (via [`ts-fsrs`](https://github.com/open-spaced-repetition/ts-fsrs)), so weak cards resurface sooner. **`due_today`** summarizes what is due across all your decks.
 - **Decks & categories**: switch decks from a dropdown, browse a **category tree** (deck names use `::` to nest, e.g. `LLM::Attention`), or see the same tree as an inline **mind map**. The **`study`** tool reviews a whole subtree at once, merging its decks into one session.
@@ -70,6 +70,8 @@ Then fully quit Claude Desktop (from the system tray) and relaunch. `memora` sho
 - `make me a deck of 10 Spanish travel phrases`
 - `turn what we just discussed into a deck called "Photosynthesis"`
 - `add 5 harder capitals to my World Capitals deck`  (uses `append`)
+- `make a reversible deck of 10 Spanish words`  (drills both directions via `reverse`)
+- `make a fill-in-the-blank deck about the water cycle`  (cloze cards)
 - `what's due today?`
 
 ## Development

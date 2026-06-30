@@ -83,6 +83,47 @@
   font-style: italic;
 }
 
+/* Cloze (fill-in-the-blank) card: in-place reveal keeps the sentence context */
+.clozeScene {
+  width: 100%;
+  cursor: pointer;
+}
+
+.clozeCard {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  align-content: center;
+  justify-content: center;
+  gap: 2px;
+  width: 100%;
+  min-height: 160px;
+  box-sizing: border-box;
+  padding: var(--spacing-lg);
+  border: var(--border-width-regular) solid
+    color-mix(in srgb, var(--color-text-primary) 18%, transparent);
+  border-radius: calc(var(--border-radius-md) * 2);
+  background-color: var(--color-background-primary);
+  box-shadow: 0 2px 12px color-mix(in srgb, var(--color-text-primary) 14%, transparent);
+  font-size: var(--font-heading-lg-size);
+  line-height: var(--font-heading-lg-line-height);
+  text-align: center;
+}
+
+/* the gap before the answer is shown */
+.clozeBlank {
+  display: inline-block;
+  min-width: 64px;
+  border-bottom: 2px solid var(--color-accent);
+}
+
+/* the revealed answer, filled inline where the blank was */
+.clozeAnswer {
+  color: var(--color-accent);
+  font-weight: var(--font-weight-bold);
+  border-bottom: 2px solid var(--color-accent);
+}
+
 /* Results summary */
 .resultScore {
   margin: 0;

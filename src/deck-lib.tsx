@@ -222,6 +222,32 @@ export function QuizCard({
   );
 }
 
+/** A cloze card is a flashcard whose front contains the blank placeholder "[...]". */
+export function isCloze(front: string): boolean {
+  return front.includes("[...]");
+}
+
+/**
+ * Fill-in-the-blank card: the "[...]" in the front renders as a gap that, once
+ * revealed, fills inline with the answer (card.back) so the sentence stays intact.
+ */
+export function ClozeCard({ card, revealed }: { card: Card; revealed: boolean }) {
+  const i = card.front.indexOf("[...]");
+  const before = i >= 0 ? card.front.slice(0, i) : card.front;
+  const after = i >= 0 ? card.front.slice(i + 5) : "";
+  return (
+    <div className={styles.clozeCard}>
+      <span>{before}</span>
+      {revealed ? (
+        <span className={styles.clozeAnswer}>{card.back}</span>
+      ) : (
+        <span className={styles.clozeBlank} aria-label="blank">&nbsp;</span>
+      )}
+      <span>{after}</span>
+    </div>
+  );
+}
+
 // --- mind map ------------------------------------------------------------
 
 /**

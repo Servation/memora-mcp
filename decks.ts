@@ -137,6 +137,11 @@ export function quizDeckNames(decks: DeckMap): string[] {
   return Object.keys(decks).filter((n) => decks[n].length > 0 && decks[n].every((c) => !!c.options?.length));
 }
 
+/** A cloze (fill-in-the-blank) card: its front carries the "[...]" blank placeholder. */
+export function isCloze(front: string): boolean {
+  return front.includes("[...]");
+}
+
 /** Build the tool result that renders a (possibly multi-deck) session in the flip-card UI. */
 export function deckResult(
   title: string,

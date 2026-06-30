@@ -18,9 +18,11 @@ import {
   EMPTY,
   extractDeck,
   buildTree,
+  isCloze,
   TreeView,
   CardList,
   QuizCard,
+  ClozeCard,
   MindMap,
 } from "./deck-lib";
 
@@ -427,30 +429,48 @@ function Deck({
             </>
           ) : (
             <>
-              <div
-                className={styles.scene}
-                onClick={() => setFlipped((f) => !f)}
-                role="button"
-                tabIndex={0}
-                aria-label="Flashcard, click to flip"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    setFlipped((f) => !f);
-                  }
-                }}
-              >
-                <div className={`${styles.card} ${flipped ? styles.cardFlipped : ""}`}>
-                  <div className={styles.face}>
-                    <span className={styles.faceLabel}>Front</span>
-                    {card.front}
-                  </div>
-                  <div className={`${styles.face} ${styles.faceBack}`}>
-                    <span className={styles.faceLabel}>Back</span>
-                    {card.back}
+              {isCloze(card.front) ? (
+                <div
+                  className={styles.clozeScene}
+                  onClick={() => setFlipped((f) => !f)}
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Cloze card, click to reveal the answer"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setFlipped((f) => !f);
+                    }
+                  }}
+                >
+                  <ClozeCard card={card} revealed={flipped} />
+                </div>
+              ) : (
+                <div
+                  className={styles.scene}
+                  onClick={() => setFlipped((f) => !f)}
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Flashcard, click to flip"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setFlipped((f) => !f);
+                    }
+                  }}
+                >
+                  <div className={`${styles.card} ${flipped ? styles.cardFlipped : ""}`}>
+                    <div className={styles.face}>
+                      <span className={styles.faceLabel}>Front</span>
+                      {card.front}
+                    </div>
+                    <div className={`${styles.face} ${styles.faceBack}`}>
+                      <span className={styles.faceLabel}>Back</span>
+                      {card.back}
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
               {flipped ? (
                 <div className={styles.controls}>
@@ -458,7 +478,9 @@ function Deck({
                   <button className={styles.gradeRight} onClick={() => grade(true)}>Got it</button>
                 </div>
               ) : (
-                <p className={styles.hint}>Click the card to reveal the answer</p>
+                <p className={styles.hint}>
+                  {isCloze(card.front) ? "Click to reveal the answer" : "Click the card to reveal the answer"}
+                </p>
               )}
             </>
           )}
