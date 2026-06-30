@@ -1,0 +1,36 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.Servation/memora-mcp",
+  "title": "Memora",
+  "description": "Flashcards, quizzes, and cloze cards with spaced repetition, as an inline MCP App.",
+  "version": "0.1.1",
+  "websiteUrl": "https://github.com/Servation/memora-mcp#readme",
+  "repository": {
+    "url": "https://github.com/Servation/memora-mcp",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "@servation/memora-mcp",
+      "version": "0.1.1",
+      "runtimeHint": "npx",
+      "transport": {
+        "type": "stdio"
+      },
+      "runtimeArguments": [
+        {
+          "type": "positional",
+          "value": "-y"
+        }
+      ],
+      "packageArguments": [
+        {
+          "type": "named",
+          "name": "--stdio"
+        }
+      ]
+    }
+  ]
+}

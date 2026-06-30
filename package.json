@@ -1,6 +1,7 @@
 {
   "name": "@servation/memora-mcp",
   "version": "0.1.1",
+  "mcpName": "io.github.Servation/memora-mcp",
   "type": "module",
   "description": "Interactive flashcards, quizzes, and cloze cards with spaced repetition for Claude Desktop, as an MCP App (inline UI).",
   "license": "MIT",
