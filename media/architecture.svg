@@ -14,13 +14,14 @@
   <text x="150" y="180" text-anchor="middle" font-size="12" fill="#64748b">model + host</text>
 
   <rect x="325" y="120" width="210" height="90" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
-  <text x="430" y="153" text-anchor="middle" font-size="16" font-weight="700" fill="#0f172a">Memora MCP server</text>
-  <text x="430" y="174" text-anchor="middle" font-size="11" fill="#64748b">review_deck &#183; create_deck</text>
-  <text x="430" y="190" text-anchor="middle" font-size="11" fill="#64748b">grade_card</text>
+  <text x="430" y="151" text-anchor="middle" font-size="16" font-weight="700" fill="#0f172a">Memora MCP server</text>
+  <text x="430" y="172" text-anchor="middle" font-size="11" fill="#64748b">review_deck &#183; study &#183; create_quiz</text>
+  <text x="430" y="188" text-anchor="middle" font-size="11" fill="#64748b">create_deck &#183; grade_card &#183; due_today</text>
 
   <rect x="605" y="120" width="210" height="90" rx="12" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.5"/>
-  <text x="710" y="153" text-anchor="middle" font-size="16" font-weight="700" fill="#0f172a">Flip-card UI</text>
-  <text x="710" y="174" text-anchor="middle" font-size="12" fill="#64748b">sandboxed iframe</text>
+  <text x="710" y="151" text-anchor="middle" font-size="16" font-weight="700" fill="#0f172a">Review UI</text>
+  <text x="710" y="172" text-anchor="middle" font-size="12" fill="#64748b">flip &#183; quiz &#183; cloze</text>
+  <text x="710" y="190" text-anchor="middle" font-size="11" fill="#64748b">sandboxed iframe</text>
 
   <!-- A -> B (tool call) -->
   <line x1="255" y1="150" x2="320" y2="150" stroke="#94a3b8" stroke-width="2.5" marker-end="url(#arrow)"/>

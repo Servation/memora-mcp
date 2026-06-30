@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 430" font-family="-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+  <defs>
+    <filter id="shm" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="5" flood-color="#0f172a" flood-opacity="0.10"/>
+    </filter>
+  </defs>
+
+  <rect x="10" y="10" width="840" height="410" rx="18" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1.5"/>
+  <text x="430" y="44" text-anchor="middle" font-size="21" font-weight="700" fill="#0f172a">Organize decks as a category tree, view it as a mind map</text>
+  <text x="430" y="68" text-anchor="middle" font-size="13" fill="#64748b">Tap a category to study its whole subtree, or a deck to review it.</text>
+
+  <!-- connectors (drawn first, under the nodes) -->
+  <g fill="none" stroke="#93c5fd" stroke-width="1.5">
+    <path d="M126 226 C161 226, 161 110, 196 110"/>
+    <path d="M126 226 C161 226, 161 173, 196 173"/>
+    <path d="M126 226 C161 226, 161 257, 196 257"/>
+    <path d="M126 226 C161 226, 161 341, 196 341"/>
+    <path d="M288 173 C359 173, 359 152, 430 152"/>
+    <path d="M288 173 C359 173, 359 194, 430 194"/>
+    <path d="M336 257 C383 257, 383 236, 430 236"/>
+    <path d="M336 257 C383 257, 383 278, 430 278"/>
+    <path d="M346 341 C388 341, 388 320, 430 320"/>
+    <path d="M346 341 C388 341, 388 362, 430 362"/>
+  </g>
+
+  <!-- hub -->
+  <rect x="54" y="211" width="72" height="30" rx="15" fill="#eff6ff" stroke="#bfdbfe"/>
+  <text x="90" y="231" text-anchor="middle" font-size="13" font-weight="700" fill="#475569">Decks</text>
+
+  <!-- depth 1 -->
+  <rect x="196" y="95" width="170" height="30" rx="15" fill="#eff6ff" stroke="#93c5fd" filter="url(#shm)"/>
+  <circle cx="212" cy="110" r="4" fill="#2563eb"/>
+  <text x="224" y="115" font-size="13" font-weight="700" fill="#0f172a">LLM Fundamentals</text>
+
+  <rect x="196" y="158" width="92" height="30" rx="15" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="242" y="178" text-anchor="middle" font-size="13" fill="#475569">MCP</text>
+
+  <rect x="196" y="242" width="140" height="30" rx="15" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="266" y="262" text-anchor="middle" font-size="13" fill="#475569">Transformers</text>
+
+  <rect x="196" y="326" width="150" height="30" rx="15" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="271" y="346" text-anchor="middle" font-size="13" fill="#475569">Crypto Trading</text>
+
+  <!-- depth 2 (leaf decks) -->
+  <rect x="430" y="137" width="160" height="30" rx="15" fill="#eff6ff" stroke="#93c5fd" filter="url(#shm)"/>
+  <circle cx="446" cy="152" r="4" fill="#2563eb"/>
+  <text x="458" y="157" font-size="13" font-weight="700" fill="#0f172a">Core Concepts</text>
+
+  <rect x="430" y="179" width="165" height="30" rx="15" fill="#eff6ff" stroke="#93c5fd" filter="url(#shm)"/>
+  <circle cx="446" cy="194" r="4" fill="#2563eb"/>
+  <text x="458" y="199" font-size="13" font-weight="700" fill="#0f172a">Apps Extension</text>
+
+  <rect x="430" y="221" width="125" height="30" rx="15" fill="#eff6ff" stroke="#93c5fd" filter="url(#shm)"/>
+  <circle cx="446" cy="236" r="4" fill="#2563eb"/>
+  <text x="458" y="241" font-size="13" font-weight="700" fill="#0f172a">Attention</text>
+
+  <rect x="430" y="263" width="110" height="30" rx="15" fill="#eff6ff" stroke="#93c5fd" filter="url(#shm)"/>
+  <circle cx="448" cy="278" r="8" fill="#2563eb"/>
+  <text x="448" y="282" text-anchor="middle" font-size="11" font-weight="700" fill="#ffffff">?</text>
+  <text x="462" y="283" font-size="13" font-weight="700" fill="#0f172a">Quiz</text>
+
+  <rect x="430" y="305" width="180" height="30" rx="15" fill="#eff6ff" stroke="#93c5fd" filter="url(#shm)"/>
+  <circle cx="446" cy="320" r="4" fill="#2563eb"/>
+  <text x="458" y="325" font-size="13" font-weight="700" fill="#0f172a">Risk Management</text>
+
+  <rect x="430" y="347" width="205" height="30" rx="15" fill="#eff6ff" stroke="#93c5fd" filter="url(#shm)"/>
+  <circle cx="448" cy="362" r="8" fill="#2563eb"/>
+  <text x="448" y="366" text-anchor="middle" font-size="11" font-weight="700" fill="#ffffff">?</text>
+  <text x="462" y="367" font-size="13" font-weight="700" fill="#0f172a">Position Sizing Quiz</text>
+
+  <!-- legend -->
+  <circle cx="640" cy="398" r="4" fill="#2563eb"/>
+  <text x="650" y="402" font-size="12" fill="#64748b">deck</text>
+  <rect x="692" y="391" width="16" height="13" rx="4" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="714" y="402" font-size="12" fill="#64748b">category</text>
+  <circle cx="784" cy="398" r="7" fill="#2563eb"/>
+  <text x="784" y="401.5" text-anchor="middle" font-size="10" font-weight="700" fill="#ffffff">?</text>
+  <text x="795" y="402" font-size="12" fill="#64748b">quiz</text>
+</svg>

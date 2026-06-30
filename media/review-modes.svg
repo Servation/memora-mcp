@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 460" font-family="-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+  <defs>
+    <filter id="sh" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="3" stdDeviation="6" flood-color="#0f172a" flood-opacity="0.12"/>
+    </filter>
+  </defs>
+
+  <rect x="10" y="10" width="840" height="440" rx="18" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1.5"/>
+  <text x="430" y="46" text-anchor="middle" font-size="22" font-weight="700" fill="#0f172a">Three ways to study, inline in Claude</text>
+
+  <!-- column headings -->
+  <text x="162" y="84" text-anchor="middle" font-size="15" font-weight="700" fill="#0f172a">Flashcard</text>
+  <text x="430" y="84" text-anchor="middle" font-size="15" font-weight="700" fill="#0f172a">Multiple choice</text>
+  <text x="698" y="84" text-anchor="middle" font-size="15" font-weight="700" fill="#0f172a">Fill-in-the-blank</text>
+
+  <!-- 1) Flashcard (flip, revealed) -->
+  <rect x="40" y="100" width="244" height="180" rx="14" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5" filter="url(#sh)"/>
+  <text x="58" y="128" font-size="11" font-weight="700" letter-spacing="1.5" fill="#2563eb">BACK</text>
+  <text x="162" y="170" text-anchor="middle" font-size="13" fill="#64748b">Capital of France?</text>
+  <text x="162" y="214" text-anchor="middle" font-size="30" font-weight="600" fill="#0f172a">Paris</text>
+  <rect x="40" y="296" width="116" height="34" rx="8" fill="#dc2626"/>
+  <text x="98" y="318" text-anchor="middle" font-size="13" font-weight="700" fill="#ffffff">Missed it</text>
+  <rect x="168" y="296" width="116" height="34" rx="8" fill="#16a34a"/>
+  <text x="226" y="318" text-anchor="middle" font-size="13" font-weight="700" fill="#ffffff">Got it</text>
+
+  <!-- 2) Multiple-choice quiz -->
+  <rect x="308" y="100" width="244" height="180" rx="14" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5" filter="url(#sh)"/>
+  <text x="430" y="133" text-anchor="middle" font-size="14" font-weight="600" fill="#0f172a">Attention cost in n?</text>
+  <rect x="324" y="146" width="212" height="32" rx="8" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="340" y="167" font-size="13" fill="#0f172a">O(n log n)</text>
+  <rect x="324" y="186" width="212" height="32" rx="8" fill="#16a34a" stroke="#16a34a"/>
+  <text x="340" y="207" font-size="13" font-weight="700" fill="#ffffff">O(n&#178;)</text>
+  <text x="518" y="207" font-size="14" font-weight="700" fill="#ffffff">&#10003;</text>
+  <rect x="324" y="226" width="212" height="32" rx="8" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="340" y="247" font-size="13" fill="#0f172a">O(n)</text>
+
+  <!-- 3) Cloze fill-in-the-blank (revealed in place) -->
+  <rect x="576" y="100" width="244" height="180" rx="14" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5" filter="url(#sh)"/>
+  <text x="698" y="160" text-anchor="middle" font-size="18" fill="#0f172a">The Transformer</text>
+  <text x="698" y="188" text-anchor="middle" font-size="18" fill="#0f172a">was introduced in</text>
+  <text x="698" y="216" text-anchor="middle" font-size="18" fill="#0f172a"><tspan fill="#2563eb" font-weight="700" text-decoration="underline">2017</tspan>.</text>
+
+  <!-- balance row under cards -->
+  <text x="430" y="313" text-anchor="middle" font-size="12" fill="#64748b">pick &#8594; reveal correct</text>
+  <text x="698" y="313" text-anchor="middle" font-size="12" fill="#64748b">click to reveal the gap</text>
+
+  <!-- footer: spaced repetition -->
+  <rect x="40" y="350" width="780" height="76" rx="12" fill="#eff6ff" stroke="#bfdbfe"/>
+  <text x="430" y="380" text-anchor="middle" font-size="14" font-weight="700" fill="#0f172a">Every answer updates a per-card spaced-repetition schedule (FSRS).</text>
+  <text x="430" y="405" text-anchor="middle" font-size="13" fill="#475569">Due cards come back first, and your grades flow to Claude so it can drill what you missed.</text>
+</svg>
